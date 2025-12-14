@@ -1,21 +1,31 @@
--- Define the button's properties outside the function
-local button = {
-    x = 50,
-    y = 50,
-    width = 200,
-    height = 50
+-- Global settings for the Black Square UI element
+local square = {
+    x = 100,      -- X position (from the left of the window)
+    y = 100,      -- Y position (from the top of the window)
+    width = 150,  -- Width of the square
+    height = 150  -- Height of the square
 }
 
-function love.mousepressed(x, y, button_type, is_touch)
-  if button_type == 1 then -- Check for Left Mouse Button (LMB)
-    -- Check if the mouse coordinates (x, y) are inside the button
-    if x >= button.x and
-       x <= button.x + button.width and
-       y >= button.y and
-       y <= button.y + button.height
-    then
-      -- This is where your button's action goes!
-      print("Button was clicked!")
-    end
-  end
+-- 1. The Draw Function: Renders graphics every frame
+function love.draw()
+    -- Set the drawing color to black (R=0, G=0, B=0, A=1)
+    love.graphics.setColor(0, 0, 0, 1)
+
+    -- Draw a filled rectangle using the defined properties
+    -- Arguments: "fill", x, y, width, height
+    love.graphics.rectangle("fill", square.x, square.y, square.width, square.height)
+
+    -- Optional: Draw a border around it in a different color (e.g., white)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.rectangle("line", square.x, square.y, square.width, square.height)
+end
+
+-- 2. The Update Function (not strictly needed for a static square, but good practice)
+function love.update(dt)
+    -- dt is the time elapsed since the last frame (delta time)
+end
+
+-- 3. The Load Function (Optional: Setting the window title)
+function love.load()
+    love.window.setTitle("Black Square UI Example")
 end
