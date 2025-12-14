@@ -1,0 +1,21 @@
+-- Define the button's properties outside the function
+local button = {
+    x = 50,
+    y = 50,
+    width = 200,
+    height = 50
+}
+
+function love.mousepressed(x, y, button_type, is_touch)
+  if button_type == 1 then -- Check for Left Mouse Button (LMB)
+    -- Check if the mouse coordinates (x, y) are inside the button
+    if x >= button.x and
+       x <= button.x + button.width and
+       y >= button.y and
+       y <= button.y + button.height
+    then
+      -- This is where your button's action goes!
+      print("Button was clicked!")
+    end
+  end
+end
