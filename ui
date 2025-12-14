@@ -1,31 +1,40 @@
--- Global settings for the Black Square UI element
-local square = {
-    x = 100,      -- X position (from the left of the window)
-    y = 100,      -- Y position (from the top of the window)
-    width = 150,  -- Width of the square
-    height = 150  -- Height of the square
-}
+-- Get a reference to the PlayerGui, which holds all client-side UI elements.
+-- This is where your UI must be placed to be visible to the local player.
+local PlayerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- 1. The Draw Function: Renders graphics every frame
-function love.draw()
-    -- Set the drawing color to black (R=0, G=0, B=0, A=1)
-    love.graphics.setColor(0, 0, 0, 1)
+-- 1. Create the ScreenGui container
+-- A ScreenGui is essential; it's the root container for all 2D UI.
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "InjectedUIContainer"
+ScreenGui.ResetOnSpawn = false -- Keeps the UI visible even if the character dies
+ScreenGui.Parent = PlayerGui
 
-    -- Draw a filled rectangle using the defined properties
-    -- Arguments: "fill", x, y, width, height
-    love.graphics.rectangle("fill", square.x, square.y, square.width, square.height)
+-- 2. Create the black square Frame
+-- A Frame is a basic rectangular UI element used for backgrounds and containers.
+local BlackSquare = Instance.new("Frame")
+BlackSquare.Name = "BlackSquare"
 
-    -- Optional: Draw a border around it in a different color (e.g., white)
-    love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.rectangle("line", square.x, square.y, square.width, square.height)
-end
+-- Set Appearance and Position
+-- UDim2 is used for positioning and sizing. It takes four arguments:
+-- UDim2.new(ScaleX, OffsetX, ScaleY, OffsetY)
+-- Scale uses percentages (0 to 1), Offset uses pixels.
 
--- 2. The Update Function (not strictly needed for a static square, but good practice)
-function love.update(dt)
-    -- dt is the time elapsed since the last frame (delta time)
-end
+-- Position: Centered (0.5 scale) minus half its size (100 pixels offset)
+-- This places the square slightly off-center for visual clarity.
+BlackSquare.Position = UDim2.new(0.3, 0, 0.3, 0) 
 
--- 3. The Load Function (Optional: Setting the window title)
-function love.load()
-    love.window.setTitle("Black Square UI Example")
-end
+-- Size: 200x200 pixels (fixed size, regardless of screen resolution)
+BlackSquare.Size = UDim2.new(0, 200, 0, 200)
+
+-- Set the color: Color3.new takes RGB values (0 to 1)
+BlackSquare.BackgroundColor3 = Color3.new(0, 0, 0) -- Pure Black
+
+-- Set properties for a cleaner look
+BlackSquare.BorderSizePixel = 0 -- Remove the default gray border
+BlackSquare.BackgroundTransparency = 0 -- Ensure it's fully opaque
+
+-- 3. Finalize
+-- Attach the square to the ScreenGui container to make it visible.
+BlackSquare.Parent = ScreenGui
+
+print("Black square UI created and injected successfully.")
