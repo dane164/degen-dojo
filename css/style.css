@@ -18,6 +18,9 @@ button{font-family:inherit;cursor:pointer;color:inherit}
 img{image-rendering:pixelated;max-width:100%}
 #bgScene,#bgFx{position:fixed;inset:0;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
 #bgScene{z-index:-2} #bgFx{z-index:-1}
+#bgScene,#bgFx{transition:filter .4s ease,transform .4s ease}
+body[data-screen="title"] #bgScene{filter:blur(2.5px) brightness(.92);transform:scale(1.03)}
+body[data-screen="title"] #bgFx{filter:blur(1px)}
 
 /* glass card */
 .glass{background:var(--card);border:2px solid var(--card-line);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}

@@ -9,7 +9,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 
 // ---------- screens ----------
 function show(name){
-  st.screen=name; $$('.screen').forEach(s=>s.classList.toggle('active', s.id==='screen-'+name));
+  st.screen=name; document.body.dataset.screen=name; $$('.screen').forEach(s=>s.classList.toggle('active', s.id==='screen-'+name));
   window.scrollTo(0,0);
   if(name==='title') Au.playSong(Au.TITLE_SONG);
   $('#keysSolo').hidden = st.mode==='local'; $('#keysLocal').hidden = st.mode!=='local';
@@ -197,7 +197,7 @@ $('#howOv').addEventListener('click',e=>{ if(e.target.id==='howOv') closeHow(); 
 $('#lbOv').addEventListener('click',e=>{ if(e.target.id==='lbOv') $('#lbOv').hidden=true; });
 
 // ---------- online: profile ----------
-function friendlyErr(e){ const m=e&&e.message||''; return m==='NAME_TAKEN'?'That name is taken.':m==='BAD_NAME'?'3–16 characters: letters, numbers, _ . -':m==='OFFLINE'||/fetch|network|Failed/i.test(m)?"Can't reach the dojo servers. Online play needs the live site and an internet connection.":'Something went wrong ('+m+').'; }
+function friendlyErr(e){ const m=e&&e.message||''; return m==='NAME_TAKEN'?'That name is taken.':m==='BAD_NAME'?'Not allowed. 3–16 letters/numbers/_ . - and keep it clean.':m==='OFFLINE'||/fetch|network|Failed/i.test(m)?"Can't reach the dojo servers. Online play needs the live site and an internet connection.":'Something went wrong ('+m+').'; }
 function refreshChip(){ const p=ON.profile, c=$('#profileChip');
   if(!p){ c.hidden=true; return; } c.hidden=false; c.innerHTML=`<b>${esc(p.name)}</b><span>${p.elo}</span><i class="tier t-${tierClass(p.tier)}">${p.tier}</i>`; }
 function tierClass(t){ return String(t||'').toLowerCase().replace(/\s+/g,'-'); }
@@ -210,6 +210,7 @@ function openNameModal(rename){
 $('#nameForm').addEventListener('submit',async e=>{
   e.preventDefault(); const v=$('#nameInput').value.trim(), rename=!!$('#nameOv').dataset.rename;
   if(!/^[A-Za-z0-9_.-]{3,16}$/.test(v)){ $('#nameErr').textContent='3–16 characters: letters, numbers, _ . -'; return; }
+  if(ON.nameOk && !ON.nameOk(v)){ $('#nameErr').textContent="Keep it clean. Pick another name."; return; }
   $('#nameGo').disabled=true; $('#nameErr').textContent='';
   try{ if(rename) await ON.rename(v); else await ON.register(v); refreshChip(); $('#nameOv').hidden=true; nameResolve&&nameResolve(true); nameResolve=null; if(rename) openLeaderboard(); }
   catch(err){ $('#nameErr').textContent=friendlyErr(err); }
@@ -430,7 +431,7 @@ function loop(now){
 
 // ---------- boot ----------
 function boot(){
-  if(DD.Scene) DD.Scene.init(); buildGrids(); show('title'); requestAnimationFrame(loop);
+  try{ if(DD.Scene) DD.Scene.init(); }catch(e){ console.warn('scene',e); } buildGrids(); show('title'); requestAnimationFrame(loop);
   if(ON.available() && ON.ident){ ON.me().then(refreshChip).catch(()=>{}); }
   refreshOnlineLine(); setInterval(()=>{ if(st.screen==='title') refreshOnlineLine(); },30000);
 }

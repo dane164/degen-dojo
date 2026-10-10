@@ -4,7 +4,7 @@
 
 ### `$DOJO` · The internet's biggest memes. One dojo. No refunds.
 
-**[▶ PLAY NOW](https://dane164.github.io/degen-dojo/)** · **[X / Twitter](https://x.com/Dojodegenerate)** ·
+**[▶ PLAY NOW](https://YOUR-SITE-HERE)** · **[X / Twitter](https://x.com/YOUR_HANDLE)** · **[Telegram](https://t.me/YOUR_GROUP)** · **[Chart](https://dexscreener.com/)**
 
 `CA: COMING SOON`
 

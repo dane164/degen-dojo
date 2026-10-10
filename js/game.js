@@ -1,7 +1,7 @@
 /* DEGEN DOJO — fight engine */
 (function(){
 const AW=480, AH=270, FLOOR=232, WALL_L=18, WALL_R=462;
-const SC=2, GRAV=0.62, MAXHP=1000, ROUND_TIME=60, WINS_NEEDED=2;
+const SC=2, GRAV=0.62, MAXHP=1000, ROUND_TIME=60, WINS_NEEDED=2, WAKE_INV=14;
 const A = ()=>DD.Audio;
 
 // attack table (frames @60fps)
@@ -47,7 +47,7 @@ class Fighter {
   get grounded(){ return this.y>=FLOOR-0.01; }
   get crouching(){ return this.state==='crouch'||this.state==='cblock'||(this.state==='attack'&&this.atk&&(this.atk.key==='cP'||this.atk.key==='cK')); }
   hurt(){ const s=this.size, top = this.state==='kd'||this.state==='ko' ? -12 : (this.crouching? -36 : -54); return {x0:this.x-11*s, x1:this.x+11*s, y0:this.y+top*s, y1:this.y}; }
-  pressed(k){ return this.inp[k] && !this.prev[k]; }
+  pressed(k){ return (this.inp[k] && !this.prev[k]) || !!(this.wb && this.wb[k]); }
   spdMul(){ return this.spec.stats.spd * (this.buff.spd>0?1.45:1) * (this.slow>0?0.55:1); }
   canAct(){ return ['idle','walk','crouch','block','cblock'].includes(this.state) && this.stun<=0; }
   set(st){ if(this.state!==st){ this.state=st; this.t=0; } }
@@ -67,7 +67,7 @@ class Fight {
   }
   startRound(){
     for(const f of this.p) f.reset();
-    this.proj=[]; this.zones=[]; this.clones=[]; this.fx=[]; this.texts=[]; this.side=0;
+    this.proj=[]; this.zones=[]; this.clones=[]; this.fx=[]; this.texts=[]; this.side=0; this.p.forEach(q=>q.cpush=0);
     this.timer=ROUND_TIME; this.tick=0; this.phase='intro'; this.pt=0; this.banner=null; this.koWinner=null;
     this.speak('Round '+this.round);
   }
@@ -165,6 +165,12 @@ class Fight {
 
     const spd=f.spdMul();
     switch(f.state){
+      case 'getup': {
+        f.invuln=2; f.vx=0;
+        for(const k of ['p','k','sp','up','block']) if(f.inp[k] && !f.prev[k]) (f.wb=f.wb||{})[k]=1; // buffer wake-up inputs
+        if(f.t<=14) break;
+        f.set('idle'); f.invuln=WAKE_INV; // wake-up: short hit/throw immunity, then act this same frame
+      } // falls through
       case 'idle': case 'walk': case 'crouch': case 'block': case 'cblock': {
         if(f.stun>0){ f.stun--; f.vx*=0.85; break; }
         if(f.landLag>0){ f.landLag--; f.vx=0; break; }
@@ -205,10 +211,11 @@ class Fight {
       case 'dizzy': { f.vx*=0.8; if(f.t%10===0) this.spark(f.x+rand(-10,10),f.y-118*f.size/2,'#ffd23f',1,0,-0.5); if(f.t>85){ f.set('idle'); } break; }
       case 'attack': this.updateAttack(f,o); break;
       case 'hit': { f.vx*=0.88; if(--f.stun<=0 && f.grounded){ f.stun=0; f.combo=0; f.set('idle'); } break; }
-      case 'kd': { f.vx*=0.85; f.invuln=2; f.combo=0; if(f.t>48){ f.set('getup'); } break; }
-      case 'getup': { f.invuln=2; f.vx=0; if(f.t>14) f.set('idle'); break; }
+      case 'kd': { f.vx*=0.85; f.invuln=2; f.combo=0; f.wb=null; if(f.t>48){ f.set('getup'); } break; }
       case 'special': this.updateSpecial(f,o); break;
     }
+    if(f.state!=='getup') f.wb=null;
+    if(f.cpush){ const stp=Math.sign(f.cpush)*Math.min(Math.abs(f.cpush), Math.max(1,Math.abs(f.cpush)*0.18)); f.x+=stp; f.cpush-=stp; if(Math.abs(f.cpush)<0.5) f.cpush=0; }
     this.physics(f);
   }
 
@@ -227,7 +234,13 @@ class Fight {
   pushApart(){
     const [a,b]=this.p;
     if(a.hidden||b.hidden||a.state==='ko'||b.state==='ko'||a.passThru||b.passThru) return;
-    const dx=b.x-a.x, dy=Math.abs(a.y-b.y), min=18*((a.size+b.size)/2);
+    const dx=b.x-a.x, dy=Math.abs(a.y-b.y); let min=18*((a.size+b.size)/2);
+    const aAir0=!a.grounded, bAir0=!b.grounded;
+    if(aAir0!==bAir0){ // one jumper vs one grounded: small air pushbox, and a jumper heading across sails over
+      const jm=aAir0?a:b, gr=aAir0?b:a, toward=Math.sign(gr.x-jm.x);
+      if(dy>18 && toward && Math.sign(jm.vx)===toward && Math.abs(jm.vx)>0.5){ this.side = Math.abs(dx)>min*0.6 ? (dx>=0?1:-1) : this.side; return; }
+      min*=0.55;
+    }
     // remember which side each fighter is on while they're clearly apart (or one is well above the other)
     if(!this.side || Math.abs(dx)>min*0.6) this.side = dx>=0?1:-1;
     if(Math.abs(dx)>=min || dy>=80) return;
@@ -317,6 +330,7 @@ class Fight {
         this.pop(def.x,def.y-140,'PARRY!','#ffd23f'); this.snd('parry');
         return false;
       }
+      this.cornerPush(att,def,dir,opts,true);
       const chip=opts.dmg*0.08; def.hp=Math.max(def.buff.plot>0?1:0.5, def.hp-chip);
       def.vx=dir*(opts.kb*1.5); def.stun=Math.round(opts.hs*0.65);
       def.meter=Math.min(100,def.meter+3); att.meter=Math.min(100,att.meter+1);
@@ -351,6 +365,7 @@ class Fight {
     if(opts.kd || !def.grounded || opts.launch){
       def.set('hit'); def.launched=true; def.stun=99; def.vy=opts.launch? -9 : -5.5; def.vx=dir*(opts.kb+1)*1.4;
     } else { def.set('hit'); def.stun=opts.hs; def.vx=dir*opts.kb*1.5; }
+    this.cornerPush(att,def,dir,opts);
     this.hitstop = opts.heavy? 7 : 5; this.shake = opts.heavy? 8 : 4;
     const hx = def.x - dir*10, hy=def.y-(def.crouching?24:38)*def.size;
     this.spark(hx,hy,'#fff',6); this.spark(hx,hy,'#ff6a00',8);
@@ -358,6 +373,13 @@ class Fight {
     this.snd(opts.heavy||dmg>80?'heavy':'hit');
     if(dmg>=95 || (opts.kd && Math.random()<0.6)) this.pop(def.x, def.y-140, DD.TEXT_POPS[Math.floor(Math.random()*DD.TEXT_POPS.length)]);
     return true;
+  }
+
+  cornerPush(att,def,dir,opts,blocked){
+    if(!opts.melee || !att.grounded || !opts.kb) return;
+    const room = dir>0 ? (WALL_R-8*def.size)-def.x : def.x-(WALL_L+8*def.size);
+    if(room>10) return;                          // defender has space to slide: normal knockback
+    att.cpush = -dir*(blocked ? Math.min(42, 8+opts.kb*9) : Math.min(22, 3+opts.kb*4)); // attacker gets pushed out instead (less on hit so combos still connect)
   }
 
   // ---- specials ----
@@ -641,7 +663,7 @@ class Fight {
   drawFighter(ctx,f){
     if(f.hidden) return;
     const [pose,fr]=this.poseFor(f);
-    const blinking = f.invuln>0 && f.sp && (this.frame%4<2);
+    const blinking = f.invuln>0 && (f.sp || (f.invuln>2 && f.state!=='kd' && f.state!=='getup')) && (this.frame%4<2);
     const cv=DD.Sprites.get(f.spec,pose,fr,f.alt,f.flash>0);
     const k=SC/DD.Sprites.RES;
     // swoosh trail on active attack frames

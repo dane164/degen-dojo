@@ -19,6 +19,18 @@ async function rpc(name,args){
 
 // ---------- identity (anonymous: id + secret kept in this browser) ----------
 const ID_KEY='dd_identity_v1';
+
+// Name filter (mirrors dd_private.dd_name_ok on the server, which is the real gate)
+const NAME_STRONG=/n+i+g+g+|^n+i+g+a+s*$|n+i+g+a+h|f+a+g+g+|f+a+g+o+t|k+i+k+e+|c+h+i+n+k|t+r+a+n+n+y|r+e+t+a+r+d|w+e+t+b+a+c+k|b+e+a+n+e+r|c+u+n+t|f+u+c+k|f+u+k+|f+c+k|f+v+c+k|s+h+i+t|b+i+t+c+h|w+h+o+r+e|s+l+u+t|p+u+s+s+y|p+e+n+i+s|v+a+g+i+n+a|r+a+p+i+s+t|n+a+z+i|h+i+t+l+e+r|k+k+k|p+o+r+n|j+i+z+z|t+w+a+t|w+a+n+k|a+s+s+h+o+l+e|d+i+l+d+o|p+e+d+o+p+h|p+e+d+o+f+i+l|m+o+l+e+s+t|c+o+c+k+s+u+c+k|d+i+c+k+h+e+a+d|n+o+n+c+e|s+p+i+c+k/;
+const NAME_WORDS=new Set('fag fags spic spics coon coons paki dyke cock dick cum ass rape raped raper tit tits homo jap gook gooks nig nigs fck fk fuk sex anal anus semen boob boobs piss crap bastard prick kys'.split(' '));
+const leet=t=>t.toLowerCase().replace(/[0134578@$!|]/g,c=>({'0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','8':'b','@':'a','$':'s','!':'i','|':'i'})[c]).replace(/[^a-z]/g,'');
+function nameOk(n){
+  const norm=leet(n).replace('therapist','').replace('shiitake','').replace('scunthorpe','');
+  if(NAME_STRONG.test(norm)) return false;
+  for(const tok of n.replace(/([a-z])([A-Z])/g,'$1 $2').split(/[^A-Za-z0-9]+/)){ if(!tok) continue;
+    if(NAME_WORDS.has(leet(tok)) || NAME_WORDS.has(tok.toLowerCase().replace(/[^a-z]/g,''))) return false; }
+  return true;
+}
 function loadId(){ try{ const v=JSON.parse(localStorage.getItem(ID_KEY)||'null'); return v&&v.id&&v.secret?v:null; }catch(e){ return null; } }
 function saveId(v){ try{ localStorage.setItem(ID_KEY,JSON.stringify(v)); }catch(e){} }
 let ident=loadId(), profile=null;
@@ -125,7 +137,7 @@ class NetGuest{
   }
 }
 
-DD.Online={...api, Link, NetHost, NetGuest, KEYS};
+DD.Online={ nameOk,...api, Link, NetHost, NetGuest, KEYS};
 // expose getters correctly (spread copies values)
 Object.defineProperty(DD.Online,'ident',{get:()=>ident}); Object.defineProperty(DD.Online,'profile',{get:()=>profile});
 })();

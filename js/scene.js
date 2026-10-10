@@ -34,7 +34,7 @@ function blossomTree(c,x,y,s,flip,seed){
 }
 
 function bake(){
-  W=Math.ceil(innerWidth/PX); H=Math.ceil(innerHeight/PX);
+  W=Math.max(16,Math.ceil((innerWidth||document.documentElement.clientWidth||1280)/PX)); H=Math.max(16,Math.ceil((innerHeight||document.documentElement.clientHeight||720)/PX));
   bg.width=W; bg.height=H; fx.width=W; fx.height=H;
   const c=bg.getContext('2d',{willReadFrequently:true}); c.imageSmoothingEnabled=false;
   const hz=Math.round(H*0.64), s=Math.max(0.7,Math.min(1.6,H/300));
@@ -88,8 +88,8 @@ function tick(t){
 let to=0;
 function init(){
   bg=document.getElementById('bgScene'); fx=document.getElementById('bgFx'); if(!bg||!fx) return;
-  bake(); if(!still) raf=requestAnimationFrame(tick); else tick(0), cancelAnimationFrame(raf);
-  addEventListener('resize',()=>{ clearTimeout(to); to=setTimeout(()=>{ cancelAnimationFrame(raf); bake(); if(!still) raf=requestAnimationFrame(tick); },150); });
+  try{ bake(); }catch(e){ console.warn('scene',e); fctx=fx.getContext('2d'); } if(!still) raf=requestAnimationFrame(tick); else tick(0), cancelAnimationFrame(raf);
+  addEventListener('resize',()=>{ clearTimeout(to); to=setTimeout(()=>{ cancelAnimationFrame(raf); try{ bake(); }catch(e){} if(!still) raf=requestAnimationFrame(tick); },150); });
 }
 DD.Scene={ init, pause:()=>cancelAnimationFrame(raf), resume:()=>{ if(!still){ cancelAnimationFrame(raf); raf=requestAnimationFrame(tick);} } };
 })();
