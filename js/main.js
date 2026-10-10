@@ -2,8 +2,10 @@
 (function(){
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const F=DD.FIGHTERS, AR=DD.ARENAS, Au=DD.Audio;
+window.DD_STATE = null;
 const st = { screen:'title', step:0, p1:null, p2:null, arena:null, cursor:0, diff:'normal', fight:null, randomCpu:false, randomArena:false };
 try{ st.diff = localStorage.getItem('dd_diff') || 'normal'; }catch(e){}
+window.DD_STATE = st;
 
 // ---------- screens ----------
 function show(name){
@@ -25,15 +27,26 @@ syncMute();
 const tc=$('#titleCanvas').getContext('2d'); tc.imageSmoothingEnabled=false;
 const lineup=['bear','moon','diamond','main','whale','shiba','brain'].map(id=>F.find(f=>f.id===id));
 let tf=0;
+let titleStage=null;
+function bakeTitleStage(){ // dithered wooden dojo stage the lineup stands on (transparent above)
+  const P=DD.Pix, cv=document.createElement('canvas'); cv.width=480; cv.height=270; const c=cv.getContext('2d',{willReadFrequently:true});
+  c.fillStyle=P.vgrad(c,226,270,['#c8823e','#8a4a1e','#4a2008']); c.beginPath(); c.moveTo(20,236); c.lineTo(460,236); c.lineTo(480,270); c.lineTo(0,270); c.fill();
+  for(let i=-10;i<=10;i++){ c.strokeStyle='rgba(60,24,6,.5)'; c.lineWidth=1; c.beginPath(); c.moveTo(240+i*22,236); c.lineTo(240+i*26,270); c.stroke(); }
+  P.R(c,20,234,440,3,'#ffd8a0'); P.R(c,0,262,480,8,'#2b1405');
+  P.texture(c,0,234,480,36,0.3,3,9);
+  P.glow(c,240,236,200,'rgba(255,200,120,0.25)');
+  P.dither(c,480,270,10); return cv;
+}
 function drawTitle(){
   tf++;
+  tc.setTransform(1,0,0,1,0,0); tc.clearRect(0,0,960,540);
   tc.setTransform(2,0,0,2,0,0); tc.imageSmoothingEnabled=false;
-  DD.Arenas.draw(tc,'laneway',tf);
-  tc.fillStyle='rgba(43,20,5,0.25)'; tc.fillRect(0,0,480,270);
-  const n=lineup.length;
+  if(!titleStage) titleStage=bakeTitleStage();
+  tc.drawImage(titleStage,0,0);
   lineup.forEach((s,i)=>{
-    const x=60+i*60, y=232+(i===3?4:0), cv=DD.Sprites.get(s,'idle',((tf/10)|0)+i,false,false);
+    const x=60+i*60, y=238+(i===3?2:0), cv=DD.Sprites.get(s,'idle',((tf/10)|0)+i,false,false);
     const sc=(i===3?1.6:1.3)/DD.Sprites.RES, dir=i<=3?1:-1;
+    tc.fillStyle='rgba(43,20,5,.35)'; tc.beginPath(); tc.ellipse(x,y+1,14*sc*DD.Sprites.RES,3,0,0,7); tc.fill();
     tc.save(); tc.translate(x,y); tc.scale(dir*sc,sc); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
   });
 }
@@ -229,7 +242,7 @@ function loop(now){
 }
 
 // ---------- boot ----------
-function boot(){ buildGrids(); show('title'); requestAnimationFrame(loop); }
+function boot(){ if(DD.Scene) DD.Scene.init(); buildGrids(); show('title'); requestAnimationFrame(loop); }
 const fontsReady = document.fonts ? Promise.race([document.fonts.load('16px "Press Start 2P"'), new Promise(r=>setTimeout(r,1500))]) : Promise.resolve();
-fontsReady.then(()=>{ DD.Arenas.clearCache(); boot(); });
+fontsReady.then(()=>{ DD.Arenas.clearCache(); titleStage=null; boot(); });
 })();

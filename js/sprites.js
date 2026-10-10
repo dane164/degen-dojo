@@ -327,10 +327,13 @@ function get(spec, poseName, frame, alt, white){
 }
 
 // Portrait for menus (data URL, scaled crisp)
-function portrait(spec, scale, poseName, alt){
-  const cv=get(spec,poseName||'idle',0,alt,false);
-  const out=document.createElement('canvas'); out.width=cv.width*scale; out.height=cv.height*scale;
-  const c=out.getContext('2d'); c.imageSmoothingEnabled=false; c.drawImage(cv,0,0,out.width,out.height);
+function portrait(spec, scale, poseName, alt){ // tight-cropped, crisp upscale
+  const cv=get(spec,poseName||'idle',0,alt,false), c0=cv.getContext('2d'), d=c0.getImageData(0,0,cv.width,cv.height).data;
+  let x0=cv.width,y0=cv.height,x1=0,y1=0;
+  for(let y=0;y<cv.height;y++) for(let x=0;x<cv.width;x++) if(d[(y*cv.width+x)*4+3]){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+  const pad=4; x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad); x1=Math.min(cv.width-1,x1+pad); y1=Math.min(cv.height-1,y1);
+  const w=x1-x0+1, h=y1-y0+1, out=document.createElement('canvas'); out.width=w*scale; out.height=h*scale;
+  const c=out.getContext('2d'); c.imageSmoothingEnabled=false; c.drawImage(cv,x0,y0,w,h,0,0,out.width,out.height);
   return out.toDataURL();
 }
 
