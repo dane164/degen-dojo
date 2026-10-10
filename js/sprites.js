@@ -340,14 +340,25 @@ function flash(cv){
   return c2;
 }
 
+const CACHE_MAX=700; // LRU cap keeps memory bounded on long sessions / phones
+function remember(key,cv){ cache.set(key,cv); if(cache.size>CACHE_MAX){ const first=cache.keys().next().value; cache.delete(first); } return cv; }
+function crop(cv,ox,oy){ // trim transparent margins (sprites are ~60% empty) and keep the foot anchor
+  const c=cv.getContext('2d'), w=cv.width, h=cv.height, d=c.getImageData(0,0,w,h).data;
+  let x0=w,y0=h,x1=-1,y1=-1;
+  for(let y=0;y<h;y++){ const row=y*w*4; for(let x=0;x<w;x++) if(d[row+x*4+3]){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+  if(x1<0){ cv._ox=ox; cv._oy=oy; return cv; }
+  const out=document.createElement('canvas'); out.width=x1-x0+1; out.height=y1-y0+1;
+  out.getContext('2d').drawImage(cv,x0,y0,out.width,out.height,0,0,out.width,out.height);
+  out._ox=ox-x0; out._oy=oy-y0; return out;
+}
 function get(spec, poseName, frame, alt, white){
   frame=((frame%4)+4)%4;
   const key=spec.id+'|'+poseName+'|'+frame+'|'+(alt?1:0)+'|'+(white?1:0);
   let cv=cache.get(key);
-  if(cv) return cv;
-  if(white){ cv=flash(get(spec,poseName,frame,alt,false)); cache.set(key,cv); return cv; }
+  if(cv){ cache.delete(key); cache.set(key,cv); return cv; }
+  if(white){ const src=get(spec,poseName,frame,alt,false); cv=flash(src); cv._ox=src._ox; cv._oy=src._oy; return remember(key,cv); }
   const base=document.createElement('canvas'); base.width=W*RES; base.height=H*RES;
-  const c=base.getContext('2d'); c.scale(RES,RES);
+  const c=base.getContext('2d',{willReadFrequently:true}); c.scale(RES,RES);
   drawFighterRaw(c,spec,poseName,frame);
   c.setTransform(1,0,0,1,0,0);
   outline(c,alt);
@@ -356,9 +367,8 @@ function get(spec, poseName, frame, alt, white){
     const s=spec.size, sc=document.createElement('canvas'); sc.width=Math.round(W*RES*s); sc.height=Math.round(H*RES*s);
     const x=sc.getContext('2d'); x.imageSmoothingEnabled=false; x.drawImage(base,0,0,sc.width,sc.height); cv=sc;
   }
-  cv._ox = Math.round(OX*RES*(spec.size||1)); cv._oy = Math.round(OY*RES*(spec.size||1));
-  cache.set(key,cv);
-  return cv;
+  cv=crop(cv, Math.round(OX*RES*(spec.size||1)), Math.round(OY*RES*(spec.size||1)));
+  return remember(key,cv);
 }
 
 // Portrait for menus (data URL, scaled crisp)

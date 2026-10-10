@@ -68,3 +68,6 @@ DD.ARENAS = [
 ];
 
 DD.TEXT_POPS = ['REKT','WAGMI','NGMI','BONK','GG','RATIO','COPE','DUMP','PUMP','LFG','FUD','NO CAP','BASED','L'];
+
+// Arena ids with a hand-made image in img/arenas/<id>.png. Only listed ids are fetched (avoids 404s).
+DD.ARENA_ART = [];

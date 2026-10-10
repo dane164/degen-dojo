@@ -17,13 +17,13 @@ Deploy as-is to Vercel, Netlify, GitHub Pages or Cloudflare Pages.
 | `js/arenas.js` | 12 pixel-art arenas (dithered, with foreground layers) plus the shared pixel toolkit `DD.Pix`. |
 | `js/scene.js` | Full-page sunset dojo backdrop behind the UI, with drifting petals. |
 | `js/game.js` | Fight engine: physics, normals, blocking, hit and chip damage, 24 special moves, projectiles, rounds, HUD, and the CPU AI (easy/normal/hard). |
-| `js/audio.js` | WebAudio chiptune generator (a unique song per arena), SFX, and the robot announcer via speechSynthesis. |
+| `js/audio.js` | WebAudio chiptune generator (a unique song per arena), SFX, and the announcer (speechSynthesis, prefers a deep English voice, falls back silently). |
 | `js/online.js` | Ranked online: anonymous profiles, matchmaking/ELO RPCs, WebRTC P2P link with Supabase relay fallback, host/guest netcode. |
 | `js/main.js` | Modes (Ranked / VS CPU / VS Friend), screens, leaderboard, keyboard + mouse + split-keyboard + gamepad + touch input, game loop. |
 | `css/style.css` | Orange retro UI. Theme tokens are at the top (`--or`, `--cream`, `--br`, etc.). |
 
 ## Controls
-A/D move, W jump, S crouch, double-tap to dash. Left-click (or J) punches, right-click (or K) kicks. Space blocks, and tapping it just before a hit parries. Space + left-click throws. E, L or middle-click fires the special (hold to charge). Esc pauses. Mobile gets on-screen buttons.
+A/D move, W jump, S crouch, double-tap to dash. Left-click (or J) punches, right-click (or K) kicks. Space blocks, and tapping it just before a hit parries (the attacker's shield is locked for 1.5s; nothing else changes). Space + left-click throws. E, L or middle-click fires the special (hold to charge). Esc pauses. Mobile gets on-screen buttons.
 
 Move list: punch ×3 chain (jab › straight › launcher uppercut), kick ×2 (› roundhouse), toward+P overhead, back+P anti-air, toward+K lunge kick, down+P/K lows and sweep, air down+K dive kick, block+P throw, attack out of a dash. Blocking drains a guard bar; when it empties you go dizzy.
 
@@ -32,11 +32,40 @@ Move list: punch ×3 chain (jab › straight › launcher uppercut), kick ×2 (�
 - Fighter speed, power and defence: `stats` in `data.js`
 - Rounds needed / round time: `WINS_NEEDED`, `ROUND_TIME` in `game.js`
 - CPU difficulty: `LEVELS` in `game.js`
+- The first fight in each browser tab shows the controls screen. That's `st.bindsShown` in `main.js`.
 - To swap in hand-drawn sprites later, replace `DD.Sprites.get()` so it returns your own canvas or image per pose. Set `_ox` and `_oy` to the foot origin.
+
+## Arena art (recommended)
+The procedural arenas are drawn in code, so there's a ceiling on how good they can look. To use real art:
+1. Make a 16:9 PNG (1920x1080 is ideal; pixel art scaled up 4x from 480x270 looks best).
+2. Save it as `img/arenas/<id>.png`.
+3. Add the id to `DD.ARENA_ART` at the bottom of `js/data.js`, e.g. `DD.ARENA_ART = ['floor','moon'];`
+
+Listed arenas use your image (the procedural foreground and animations switch off for that arena). Unlisted ones stay procedural. Keep the bottom ~14% as a flat floor, because the fighters stand at y = 232/270.
+
+Arena ids: `floor` `moon` `bazaar` `volcano` `dock` `coliseum` `gas` `server` `discord` `arcade` `park` `laneway`.
+
+Prompt template for an image generator:
+> 16-bit SNES fighting game stage background, side view, wide 16:9, pixel art, limited palette, no characters, no text, flat walkable floor along the bottom 15%, [SCENE], orange and purple sunset palette, detailed parallax background, crisp pixels, no blur
+
+| id | [SCENE] |
+|---|---|
+| floor | crypto trading floor at night, rows of desks with glowing green and red candlestick monitors, giant ticker board |
+| moon | surface of the moon, grey craters, Earth hanging in a black starry sky, a small planted orange flag |
+| bazaar | desert night market, lanterns, rug stalls, sand dunes and a pyramid in the distance |
+| volcano | erupting volcano lair, lava rivers, black rock pillars, glowing orange smoke |
+| dock | harbour pier at sunset, wooden planks, cranes, shipping containers, calm sea |
+| coliseum | ruined Roman coliseum at golden hour, broken arches, banners, cheering crowd silhouettes |
+| gas | neon gas station at night, glowing price sign, rain puddles, empty highway |
+| server | server room, racks of blinking blue and green lights, cable bundles, cold mist |
+| discord | chat server rendered as a purple cyber void, floating message bubbles, glowing grid floor |
+| arcade | 80s arcade, rows of cabinets, carpet with neon pattern, glowing marquee signs |
+| park | city park in spring, cherry blossom trees, benches, skyline behind |
+| laneway | rainy city laneway at night, graffiti walls, neon signs, steam vents |
 
 ## Game modes
 - **Ranked online**: pick a fighter, then queue. You're matched against the closest ELO (the range widens the longer you wait), the arena is random, and it's best of 3. Results move ELO (K=32) and show on the leaderboard.
-- **VS CPU**: easy / normal / hard.
+- **VS CPU**: easy / normal / hard (set in the CPU panel on the select screen).
 - **VS Friend (local)**: one keyboard. P1 uses `WASD` + `F` punch / `G` kick / `T` block / `H` special. P2 uses arrows + `,` punch / `.` kick / `Right Shift` block / `/` special (or numpad 1/2/0/3). Gamepad 1 is P1 and gamepad 2 is P2.
 
 ## Online architecture

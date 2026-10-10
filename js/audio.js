@@ -54,7 +54,9 @@ function makeSong(cfg){
 function schedule(){
   if(!cur||!ac) return;
   const spb=60/cur.bpm/4;
-  while(nextT < ac.currentTime+0.12){
+  if(nextT < ac.currentTime-0.02){ // timer was throttled (background tab): skip ahead instead of cramming missed notes
+    const missed=Math.ceil((ac.currentTime-nextT)/spb); step+=missed; nextT+=missed*spb; }
+  while(nextT < ac.currentTime+0.15){
     const i=step%64;
     const L=cur.lead[i], B=cur.bass[i];
     if(L) tone('square',mtof(L),nextT,spb*1.8,0.09);
@@ -72,6 +74,9 @@ function playSong(cfg, arpOn){
   if(timer) clearInterval(timer); timer=setInterval(schedule,25);
 }
 function stop(){ if(timer) clearInterval(timer); timer=null; cur=null; }
+document.addEventListener('visibilitychange',()=>{ if(!ac) return;
+  if(document.hidden){ ac.suspend().catch(()=>{}); try{ speechSynthesis.cancel(); }catch(e){} }
+  else { ac.resume().then(()=>{ nextT=ac.currentTime+0.05; }).catch(()=>{}); } });
 
 const TITLE_SONG={bpm:138, root:45, mode:'dorian', seed:420};
 
@@ -94,20 +99,46 @@ function sfx(name){
     case 'ko': tone('sawtooth',400,t,0.9,0.35,d,50); nz(t,0.6,0.4,200,d); break;
     case 'heal': tone('triangle',660,t,0.1,0.2,d); tone('triangle',990,t+0.08,0.14,0.2,d); break;
     case 'meter': tone('square',1046,t,0.06,0.15,d); tone('square',1568,t+0.06,0.1,0.15,d); break;
+    case 'superstart': tone('sawtooth',110,t,0.5,0.35,d,880); tone('square',220,t+0.02,0.45,0.18,d,1760); nz(t,0.12,0.35,1200,d); [784,988,1175,1568].forEach((f,i)=>tone('square',f,t+0.18+i*0.05,0.12,0.16,d)); break;
+    case 'sp_beam': case 'sp_bigBeam': tone('sawtooth',1600,t,0.6,0.22,d,180); tone('square',90,t,0.7,0.3,d,60); nz(t,0.6,0.18,4000,d); break;
+    case 'sp_rocketUppercut': nz(t,0.7,0.45,300,d); tone('sawtooth',120,t,0.7,0.3,d,900); break;
+    case 'sp_groundSlam': case 'sp_commandGrab': tone('sine',140,t,0.5,0.7,d,30); nz(t,0.4,0.5,150,d); break;
+    case 'sp_charge': for(let i=0;i<6;i++){ tone('sine',90,t+i*0.08,0.08,0.5,d,50); nz(t+i*0.08,0.06,0.25,400,d); } break;
+    case 'sp_wave': nz(t,1.0,0.4,600,d); tone('sine',200,t,0.9,0.25,d,60); break;
+    case 'sp_heal': case 'sp_lifesteal': [523,659,784,1046,1318].forEach((f,i)=>tone('triangle',f,t+i*0.06,0.3,0.18,d)); break;
+    case 'sp_rageBuff': tone('sawtooth',80,t,0.6,0.4,d,40); tone('square',82,t,0.6,0.25,d,41); nz(t,0.5,0.3,800,d); break;
+    case 'sp_speedBuff': case 'sp_multiDash': case 'sp_invulnRoll': for(let i=0;i<4;i++) tone('square',600+i*300,t+i*0.04,0.08,0.15,d,1200+i*300); nz(t,0.3,0.25,5000,d); break;
+    case 'sp_reflect': case 'sp_armorCounter': tone('triangle',1318,t,0.5,0.25,d); tone('triangle',1975,t+0.05,0.5,0.2,d); tone('square',2637,t+0.1,0.2,0.08,d); break;
+    case 'sp_plotArmor': [392,523,659,784].forEach((f,i)=>tone('square',f,t+i*0.07,0.4,0.14,d)); break;
+    case 'sp_rewind': tone('sawtooth',1200,t,0.6,0.2,d,100); tone('square',600,t+0.1,0.5,0.12,d,2400); break;
+    case 'sp_clones': for(let i=0;i<5;i++) tone('square',440*(1+(i%2)),t+i*0.05,0.05,0.15,d); break;
+    case 'sp_zone': nz(t,0.6,0.2,2000,d); tone('triangle',330,t,0.6,0.2,d,660); break;
+    case 'sp_teleportShuriken': case 'sp_feint': tone('sine',1800,t,0.2,0.25,d,200); nz(t,0.15,0.2,6000,d); break;
+    case 'sp_drainMeter': nz(t,0.8,0.35,3000,d); tone('sawtooth',200,t,0.5,0.12,d,80); break;
+    case 'sp_barrage': for(let i=0;i<8;i++){ tone('square',1200+(i%3)*200,t+i*0.04,0.03,0.12,d); } break;
+    case 'sp_rugPull': tone('sawtooth',600,t,0.5,0.3,d,40); nz(t,0.4,0.4,300,d); break;
+    case 'announce': tone('square',196,t,0.18,0.18,d); tone('square',294,t+0.02,0.18,0.12,d); nz(t,0.05,0.15,3000,d); break;
     case 'win': [523,659,784,1046].forEach((f,i)=>tone('square',f,t+i*0.12,0.2,0.25,d)); break;
     case 'lose': [392,330,262,196].forEach((f,i)=>tone('square',f,t+i*0.16,0.25,0.25,d)); break;
   }
 }
 
 let voice=null;
+const PREF=[/Google UK English Male/i,/Daniel/i,/Microsoft (Guy|Ryan|Christopher|Eric|Davis|David)/i,/Arthur/i,/Fred/i,/Alex/i,/English.*Male/i];
+function pickVoice(){ if(!('speechSynthesis' in window)) return null; const vs=speechSynthesis.getVoices(); if(!vs.length) return null;
+  for(const re of PREF){ const v=vs.find(x=>re.test(x.name)&&/^en/i.test(x.lang)); if(v) return v; }
+  return vs.find(v=>/^en-(GB|AU)/i.test(v.lang)) || vs.find(v=>/^en/i.test(v.lang)) || vs[0]; }
+if('speechSynthesis' in window){ voice=pickVoice(); speechSynthesis.onvoiceschanged=()=>{ voice=pickVoice(); }; }
+const SPOKEN={ 'Round 1':'Round one!', 'Round 2':'Round two!', 'Round 3':'Final round!', 'Round 4':'Round four!', 'Fight':'Fight!', 'K O':'K. O.!', 'Perfect':'Perfect!', 'Time':'Time!' };
 function say(text){
-  if(muted||!('speechSynthesis' in window)) return;
+  if(muted||!('speechSynthesis' in window)||document.hidden) return;
   try{
     speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text); u.pitch=0.1; u.rate=0.85; u.volume=0.9;
-    if(!voice){ const vs=speechSynthesis.getVoices(); voice=vs.find(v=>/en/i.test(v.lang))||vs[0]||null; }
-    if(voice) u.voice=voice;
+    const u=new SpeechSynthesisUtterance(SPOKEN[text]||text);
+    u.pitch=0.55; u.rate=/^Round|Final/.test(SPOKEN[text]||'')?0.82:1.0; u.volume=1;
+    if(!voice) voice=pickVoice(); if(voice) u.voice=voice;
     speechSynthesis.speak(u);
+    if(SPOKEN[text]) sfx('announce');
   }catch(e){}
 }
 

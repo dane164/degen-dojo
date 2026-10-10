@@ -449,31 +449,56 @@ const ANIM = {
 };
 
 // ---------- pixel pipeline ----------
+// Endesga 32: a hand-built pixel-art palette with hue-shifted ramps. Snapping every arena to it (with ordered
+// dithering) is what makes the scenes read as 16-bit art instead of vector shapes.
+const PAL=['#be4a2f','#d77643','#ead4aa','#e4a672','#b86f50','#733e39','#3e2731','#a22633','#e43b44','#f77622','#feae34','#fee761','#63c74d','#3e8948','#265c42','#193c3e',
+  '#124e89','#0099db','#2ce8f5','#ffffff','#c0cbdc','#8b9bb4','#5a6988','#3a4466','#262b44','#181425','#ff0044','#68386c','#b55088','#f6757a','#e8b796','#c28569'].map(h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]);
 const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+0.5)/16-0.5);
-function dither(c,w,h,levels){
-  const img=c.getImageData(0,0,w,h), d=img.data, step=255/(levels-1);
-  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
-    const i=(y*w+x)*4; if(!d[i+3]) continue; const b=BAYER[(y&3)*4+(x&3)]*step;
-    d[i]=Math.round((d[i]+b)/step)*step; d[i+1]=Math.round((d[i+1]+b)/step)*step; d[i+2]=Math.round((d[i+2]+b)/step)*step;
-    if(d[i+3]<255) d[i+3]=d[i+3]>110?255:0;
+function medianCut(d,n){ // build an n-colour palette from the scene's own pixels
+  const px=[]; for(let i=0;i<d.length;i+=8){ if(d[i+3]) px.push([d[i],d[i+1],d[i+2]]); }
+  let boxes=[px];
+  while(boxes.length<n){
+    let bi=-1, br=-1, bc=0;
+    boxes.forEach((bx,i)=>{ if(bx.length<2) return; for(let c=0;c<3;c++){ let lo=255,hi=0; for(const p of bx){ if(p[c]<lo)lo=p[c]; if(p[c]>hi)hi=p[c]; } const r=(hi-lo)*Math.sqrt(bx.length); if(r>br){ br=r; bi=i; bc=c; } } });
+    if(bi<0) break; const bx=boxes[bi].sort((u,v)=>u[bc]-v[bc]), m=bx.length>>1; boxes.splice(bi,1,bx.slice(0,m),bx.slice(m));
   }
+  return boxes.filter(b=>b.length).map(b=>{ const s=[0,0,0]; for(const p of b){ s[0]+=p[0]; s[1]+=p[1]; s[2]+=p[2]; } return s.map(v=>Math.round(v/b.length)); });
+}
+function makeNearest(pal){ const cache=new Map(); return (r,g,b)=>{ const key=((r>>2)<<12)|((g>>2)<<6)|(b>>2); let v=cache.get(key); if(v!==undefined) return v;
+  let best=0,bd=1e9; for(let i=0;i<pal.length;i++){ const p=pal[i], dr=r-p[0], dg=g-p[1], db=b-p[2], dd=dr*dr*0.3+dg*dg*0.59+db*db*0.11; if(dd<bd){ bd=dd; best=i; } } cache.set(key,best); return best; }; }
+function dither(c,w,h,levels){ // kept for other callers (title stage etc): per-channel posterise
+  const img=c.getImageData(0,0,w,h), d=img.data, step=255/(levels-1);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const i=(y*w+x)*4; if(!d[i+3]) continue; const b=BAYER[(y&3)*4+(x&3)]*step;
+    d[i]=Math.round((d[i]+b)/step)*step; d[i+1]=Math.round((d[i+1]+b)/step)*step; d[i+2]=Math.round((d[i+2]+b)/step)*step; if(d[i+3]<255) d[i+3]=d[i+3]>110?255:0; }
   c.putImageData(img,0,0);
 }
-function bake(fn,transparent){
+function retro(c,w,h,spread,ncol){ // drawn edges + limited per-scene palette with ordered dither
+  const img=c.getImageData(0,0,w,h), d=img.data, L=new Float32Array(w*h);
+  for(let i=0;i<w*h;i++) L[i]=d[i*4]*0.3+d[i*4+1]*0.59+d[i*4+2]*0.11;
+  for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){ const i=y*w+x; if(!d[i*4+3]) continue;
+    const e=Math.max(Math.abs(L[i]-L[i+1]),Math.abs(L[i]-L[i+w])); if(e>46 && L[i]<L[i+1]+8 && L[i]<L[i+w]+8){ const k=i*4; d[k]*=0.62; d[k+1]*=0.6; d[k+2]*=0.66; } }
+  const pal=medianCut(d,ncol||24), near=makeNearest(pal);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const i=(y*w+x)*4; if(!d[i+3]) continue; const o=BAYER[(y&3)*4+(x&3)]*spread;
+    const p=pal[near(Math.max(0,Math.min(255,d[i]+o)),Math.max(0,Math.min(255,d[i+1]+o)),Math.max(0,Math.min(255,d[i+2]+o)))];
+    d[i]=p[0]; d[i+1]=p[1]; d[i+2]=p[2]; if(d[i+3]<255) d[i+3]=d[i+3]>110?255:0; }
+  c.putImageData(img,0,0);
+}
+function bake(fn){
   const art=document.createElement('canvas'); art.width=AW; art.height=AH;
   const a=art.getContext('2d',{willReadFrequently:true});
-  fn(a); dither(a,AW,AH,10);
-  const cv=document.createElement('canvas'); cv.width=AW*UP; cv.height=AH*UP;
-  const c=cv.getContext('2d'); c.imageSmoothingEnabled=false; c.drawImage(art,0,0,cv.width,cv.height);
-  return cv;
+  fn(a); retro(a,AW,AH,34,24);
+  return art; // 480x270; drawn with smoothing off it scales up crisp, and costs ~0.5MB instead of 8MB
 }
-function render(id){ return cache[id] || (cache[id]=bake(DRAW[id]||DRAW.floor)); }
-function renderFG(id){ if(!(id in fgCache)) fgCache[id]= FG[id] ? bake(FG[id],true) : null; return fgCache[id]; }
-function draw(ctx,id,t){ const s=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(render(id),0,0,AW,AH); ctx.imageSmoothingEnabled=s; if(ANIM[id]) ANIM[id](ctx,t); }
+// optional art override: drop img/arenas/<id>.png (any 16:9 size) next to index.html and it replaces the procedural scene
+const override={};
+function loadOverride(id){ if(id in override) return; override[id]=null; if(!(DD.ARENA_ART||[]).includes(id)) return; const im=new Image(); im.onload=()=>{ override[id]=im; }; im.onerror=()=>{}; im.src='img/arenas/'+id+'.png'; }
+function render(id){ loadOverride(id); return override[id] || cache[id] || (cache[id]=bake(DRAW[id]||DRAW.floor)); }
+function renderFG(id){ if(override[id]) return null; if(!(id in fgCache)) fgCache[id]= FG[id] ? bake(FG[id]) : null; return fgCache[id]; }
+function draw(ctx,id,t){ const s=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(render(id),0,0,AW,AH); ctx.imageSmoothingEnabled=s; if(ANIM[id]&&!override[id]) ANIM[id](ctx,t); }
 function drawFG(ctx,id){ const cv=renderFG(id); if(cv){ const s=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(cv,0,0,AW,AH); ctx.imageSmoothingEnabled=s; } }
-function thumb(id){ const s=document.createElement('canvas'); s.width=AW*2; s.height=AH*2; const c=s.getContext('2d'); c.imageSmoothingEnabled=false; c.drawImage(render(id),0,0,s.width,s.height); return s.toDataURL('image/jpeg',0.85); }
+function thumb(id){ const s=document.createElement('canvas'); s.width=AW; s.height=AH; const c=s.getContext('2d'); c.imageSmoothingEnabled=false; c.drawImage(render(id),0,0,AW,AH); return s.toDataURL('image/png'); }
 function clearCache(){ for(const k in cache) delete cache[k]; for(const k in fgCache) delete fgCache[k]; }
 
 DD.Arenas = { draw, drawFG, thumb, render, clearCache, AW, AH, FLOOR };
-DD.Pix = { R, circ, poly, glow, vgrad, cloud, ridge, skyline, stars, texture, dither, rnd, fbm, shade, txt };
+DD.Pix = { R, circ, poly, glow, vgrad, cloud, ridge, skyline, stars, texture, dither, retro, rnd, fbm, shade, txt };
 })();

@@ -46,10 +46,6 @@
       <button class="ghost-btn" id="cpuBtn">VS CPU</button>
       <button class="ghost-btn" id="localBtn">VS FRIEND · LOCAL</button>
     </div>
-    <div class="diff" role="radiogroup" aria-label="CPU difficulty">
-      <span>CPU:</span>
-      <button data-diff="easy">EASY</button><button data-diff="normal" class="on">NORMAL</button><button data-diff="hard">HARD</button>
-    </div>
     <div class="title-links"><button class="link-btn" id="lbBtn">LEADERBOARD</button><i>·</i><button class="link-btn" id="quickBtn">QUICK FIGHT</button><i>·</i><button class="link-btn" id="howBtn">HOW TO PLAY</button></div>
     <p class="online-line" id="onlineLine"></p>
   </div>
@@ -76,7 +72,8 @@
     </div>
     <div class="vs">VS</div>
     <div class="side p2">
-      <div class="side-top"><span id="p2Up">UP NEXT</span><span id="p2Side">CPU</span></div>
+      <div class="side-top"><span id="p2Up">UP NEXT</span><span id="p2Side">CPU</span>
+        <div class="diff in-panel" id="cpuDiff" role="radiogroup" aria-label="CPU difficulty"><button data-diff="easy">EASY</button><button data-diff="normal" class="on">NORMAL</button><button data-diff="hard">HARD</button></div></div>
       <img id="p2Img" alt="" class="big-port">
       <div class="q" id="p2Q">?</div>
       <div class="side-info r"><h3 id="p2Name">CPU OPPONENT</h3><p id="p2Tag">CHOOSE AFTER YOUR FIGHTER.</p><p class="sp" id="p2Sp"></p></div>
@@ -163,36 +160,46 @@
   <div class="card how">
     <button class="close" data-act="closeHow" aria-label="Close">×</button>
     <h2>DOJO RULES</h2>
-    <p>Three ways to play: <b>Ranked Online</b> (matched by ELO, random arena), <b>VS CPU</b>, or <b>VS Friend</b> on one keyboard. Best of three rounds, 60 seconds each. If time runs out, highest health takes the round.</p>
-    <h3>Controls</h3>
-    <table class="moves">
-      <tr><td>Move / jump / crouch</td><td><kbd>A</kbd> <kbd>D</kbd> · <kbd>W</kbd> · <kbd>S</kbd> (or arrows). Double-tap to dash.</td></tr>
-      <tr><td>Punch</td><td><kbd>L-CLICK</kbd> or <kbd>J</kbd></td></tr>
-      <tr><td>Kick</td><td><kbd>R-CLICK</kbd> or <kbd>K</kbd></td></tr>
-      <tr><td>Block</td><td>Hold <kbd>SPACE</kbd>. Hold <kbd>S</kbd> too for lows.</td></tr>
-      <tr><td>Special</td><td><kbd>E</kbd>, <kbd>L</kbd> or <kbd>MID-CLICK</kbd> when the meter is full. Hold to charge.</td></tr>
-      <tr><td>Local P1</td><td><kbd>WASD</kbd> move, <kbd>F</kbd> punch, <kbd>G</kbd> kick, <kbd>T</kbd> block, <kbd>H</kbd> special</td></tr>
-      <tr><td>Local P2</td><td>Arrows move, <kbd>,</kbd> punch, <kbd>.</kbd> kick, <kbd>R-SHIFT</kbd> block, <kbd>/</kbd> special (or numpad 1/2/0/3)</td></tr>
-      <tr><td>Gamepad</td><td>X punch, A kick, B or bumpers block, Y special, Start for the menu</td></tr>
-    </table>
-    <h3>Move list</h3>
-    <table class="moves">
-      <tr><td>Jab › Straight › Uppercut</td><td>Punch ×3 (the uppercut launches)</td></tr>
-      <tr><td>Kick › Roundhouse</td><td>Kick ×2</td></tr>
-      <tr><td>Overhead</td><td>Toward + Punch. Beats crouch-blocking.</td></tr>
-      <tr><td>Anti-Air</td><td>Back + Punch. Launches jumpers.</td></tr>
-      <tr><td>Lunge Kick</td><td>Toward + Kick</td></tr>
-      <tr><td>Low Jab › Sweep</td><td>Down + Punch, Down + Kick</td></tr>
-      <tr><td>Dive Kick</td><td>In the air: Down + Kick. Must be blocked standing.</td></tr>
-      <tr><td>Throw</td><td>Block + Punch up close. Beats blocking.</td></tr>
-      <tr><td>Dash attack</td><td>Attack during a dash</td></tr>
-    </table>
-    <h3>Defence</h3>
-    <ul>
-      <li><b>Block</b> takes a little chip damage and drains your blue guard bar. If it empties, you're dizzy and wide open.</li>
-      <li><b>Parry</b>: tap block just before a hit lands. No chip, the attacker staggers and you get meter.</li>
-      <li>Chains and specials can be cancelled on hit or block. Combos scale damage down.</li>
-    </ul>
+    <p class="how-intro">Three ways to play: <b>Ranked Online</b> (matched by ELO, random arena), <b>VS CPU</b>, or <b>VS Friend</b> on one keyboard. Best of three rounds, 60 seconds each. If time runs out, highest health takes the round.</p>
+    <div class="how-grid">
+      <section>
+        <h3>Controls</h3>
+        <table class="moves">
+          <tr class="solo"><td>Move / jump / crouch</td><td><kbd>A</kbd> <kbd>D</kbd> · <kbd>W</kbd> · <kbd>S</kbd> (or arrows). Double-tap to dash.</td></tr>
+          <tr class="solo"><td>Punch</td><td><kbd>L-CLICK</kbd> or <kbd>J</kbd></td></tr>
+          <tr class="solo"><td>Kick</td><td><kbd>R-CLICK</kbd> or <kbd>K</kbd></td></tr>
+          <tr class="solo"><td>Block</td><td>Hold <kbd>SPACE</kbd>. Hold <kbd>S</kbd> too for lows.</td></tr>
+          <tr class="solo"><td>Special</td><td><kbd>E</kbd>, <kbd>L</kbd> or <kbd>MID-CLICK</kbd> when the meter is full. Hold to charge.</td></tr>
+          <tr class="local"><td>Player 1</td><td><kbd>WASD</kbd> move · <kbd>F</kbd> punch · <kbd>G</kbd> kick · <kbd>T</kbd> block · <kbd>H</kbd> special</td></tr>
+          <tr class="local"><td>Player 2</td><td>Arrows move · <kbd>,</kbd> punch · <kbd>.</kbd> kick · <kbd>R-SHIFT</kbd> block · <kbd>/</kbd> special (or numpad 1/2/0/3)</td></tr>
+          <tr><td>Gamepad</td><td>X punch · A kick · B or bumpers block · Y special · Start for the menu</td></tr>
+          <tr><td>Menu</td><td><kbd>ESC</kbd></td></tr>
+        </table>
+      </section>
+      <section>
+        <h3>Move list</h3>
+        <table class="moves">
+          <tr><td>Jab › Straight › Uppercut</td><td>Punch ×3 (the uppercut launches)</td></tr>
+          <tr><td>Kick › Roundhouse</td><td>Kick ×2</td></tr>
+          <tr><td>Overhead</td><td>Toward + Punch. Beats crouch-blocking.</td></tr>
+          <tr><td>Anti-Air</td><td>Back + Punch. Launches jumpers.</td></tr>
+          <tr><td>Lunge Kick</td><td>Toward + Kick</td></tr>
+          <tr><td>Low Jab › Sweep</td><td>Down + Punch, Down + Kick</td></tr>
+          <tr><td>Dive Kick</td><td>In the air: Down + Kick. Block it standing.</td></tr>
+          <tr><td>Throw</td><td>Block + Punch up close. Beats blocking.</td></tr>
+          <tr><td>Dash attack</td><td>Attack during a dash</td></tr>
+        </table>
+      </section>
+    </div>
+    <section class="how-def">
+      <h3>Defence</h3>
+      <ul>
+        <li><b>Block</b> takes a little chip damage and drains your blue guard bar. If it empties, you're dizzy and wide open.</li>
+        <li><b>Parry</b>: tap block just before a hit lands. You take nothing, and the attacker's shield is locked for 1.5 seconds.</li>
+        <li>Chains and specials cancel on hit or block. Combos scale damage down.</li>
+      </ul>
+    </section>
+    <button class="big-btn sm how-go" data-act="closeHow"><span id="howGoLabel">GOT IT</span><span class="arrow">↗</span></button>
   </div>
 </div>
 

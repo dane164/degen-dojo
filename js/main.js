@@ -13,6 +13,8 @@ function show(name){
   window.scrollTo(0,0);
   if(name==='title') Au.playSong(Au.TITLE_SONG);
   $('#keysSolo').hidden = st.mode==='local'; $('#keysLocal').hidden = st.mode!=='local';
+  if(DD.Scene){ if(name==='game') DD.Scene.pause(); else DD.Scene.resume(); }
+  if(name==='select' && st.step===2) loadArenaThumbs();
 }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,3800); }
 
@@ -44,7 +46,7 @@ function drawTitle(){
   if(!titleStage) titleStage=bakeTitleStage();
   tc.drawImage(titleStage,0,0);
   lineup.forEach((s,i)=>{
-    const x=60+i*60, y=238+(i===3?2:0), cv=DD.Sprites.get(s,'idle',((tf/10)|0)+i,false,false);
+    const x=60+i*60, y=238+(i===3?2:0), cv=DD.Sprites.get(s,'idle',((tf/22)|0)+i,false,false);
     const sc=(i===3?1.6:1.3)/DD.Sprites.RES, dir=i<=3?1:-1;
     tc.fillStyle='rgba(43,20,5,.35)'; tc.beginPath(); tc.ellipse(x,y+1,14*sc*DD.Sprites.RES,3,0,0,7); tc.fill();
     tc.save(); tc.translate(x,y); tc.scale(dir*sc,sc); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
@@ -55,7 +57,9 @@ $('#cpuBtn').onclick=()=>{ Au.sfx('lock'); st.mode='cpu'; openSelect(0); };
 $('#localBtn').onclick=()=>{ Au.sfx('lock'); st.mode='local'; openSelect(0); };
 $('#rankedBtn').onclick=async()=>{ Au.sfx('lock'); const ok=await ensureProfile(); if(!ok) return; st.mode='ranked'; openSelect(0); };
 $('#quickBtn').onclick=()=>{ Au.sfx('lock'); st.mode='cpu'; const r=a=>a[Math.floor(Math.random()*a.length)]; st.p1=r(F); st.p2=r(F); st.randomCpu=false; st.arena=r(AR); startMatch(); };
-$('#howBtn').onclick=$('#helpBtn').onclick=()=>{ $('#howOv').hidden=false; if(st.fight&&!st.net) st.fight.paused=true; };
+function openHow(pre,cb){ $('#howOv').hidden=false; $('#howOv .card').classList.toggle('local',st.mode==='local'); $('#howGoLabel').textContent=pre?"LET'S FIGHT":'GOT IT'; st.howCb=cb||null; if(st.fight&&!st.net) st.fight.paused=true; }
+function closeHow(){ $('#howOv').hidden=true; if(st.fight && !st.net && $('#pauseOv').hidden) st.fight.paused=false; const cb=st.howCb; st.howCb=null; if(cb) cb(); }
+$('#howBtn').onclick=$('#helpBtn').onclick=()=>openHow(false);
 $('#lbBtn').onclick=$('#lbTop').onclick=()=>openLeaderboard();
 $('#profileChip').onclick=()=>openLeaderboard();
 $('#brandHome').onclick=e=>{ e.preventDefault(); if(st.net) return toast('Finish or forfeit the match first.'); quitToTitle(); };
@@ -70,7 +74,7 @@ function buildGrids(){
     b.onclick=()=>{ st.cursor=i; pick(i); }; b.ondblclick=()=>lockIn(); b.onmouseenter=()=>{ if(st.cursor!==i){ st.cursor=i; hover(i); } }; g.appendChild(b); });
   const r=document.createElement('button'); r.className='tile random'; r.dataset.i='rand'; r.innerHTML=`<span class="qm">?</span><span class="nm">RANDOM</span>`; r.onclick=()=>{ st.cursor=F.length; pick('rand'); }; r.ondblclick=()=>lockIn(); g.appendChild(r);
   const a=$('#arenaGrid'); a.innerHTML='';
-  AR.forEach((ar,i)=>{ const b=document.createElement('button'); b.className='atile'; b.dataset.i=i; b.innerHTML=`<img src="${DD.Arenas.thumb(ar.id)}" alt=""><span class="nm">${ar.name.toUpperCase()}<small>${ar.sub}</small></span>`;
+  AR.forEach((ar,i)=>{ const b=document.createElement('button'); b.className='atile'; b.dataset.i=i; b.innerHTML=`<img alt=""><span class="nm">${ar.name.toUpperCase()}<small>${ar.sub}</small></span>`;
     b.onclick=()=>{ st.cursor=i; pickArena(i); }; b.ondblclick=()=>lockIn(); b.onmouseenter=()=>{ st.cursor=i; markCursor(); }; a.appendChild(b); });
 }
 const MODE_TXT={
@@ -78,11 +82,14 @@ const MODE_TXT={
   local: {steps:['01 PLAYER 1','02 PLAYER 2','03 ARENA'], label:['PLAYER 1: PICK A FIGHTER','PLAYER 2: PICK A FIGHTER','SELECT ARENA'], badge:['P1','P2'], side:['PLAYER 1','PLAYER 2'], hint:['THEN PLAYER 2 PICKS','THEN CHOOSE YOUR ARENA','THEN FIGHT']},
   ranked:{steps:['01 YOUR FIGHTER','02 MATCHMAKING','03 RANKED FIGHT'], label:['SELECT YOUR FIGHTER'], badge:['YOU','OPP'], side:['YOU','OPPONENT'], hint:['RANDOM ARENA · BEST OF 3 · ELO ON THE LINE']},
 };
+let thumbsQ=null;
+function loadArenaThumbs(){ if(thumbsQ) return; thumbsQ=AR.map((a,i)=>i);
+  const next=()=>{ if(!thumbsQ.length) return; const i=thumbsQ.shift(), img=$$('#arenaGrid .atile img')[i]; if(img) img.src=DD.Arenas.thumb(AR[i].id); setTimeout(next,16); }; next(); }
 function openSelect(step){
   show('select'); st.step=step;
   if(step===0){ st.p1=st.p1||F[0]; st.cursor=F.indexOf(st.p1); }
   if(step===1){ st.cursor = st.p2 ? F.indexOf(st.p2) : 0; }
-  if(step===2){ st.cursor = st.arena ? AR.indexOf(st.arena) : 0; }
+  if(step===2){ st.cursor = st.arena ? AR.indexOf(st.arena) : 0; loadArenaThumbs(); }
   renderSelect();
 }
 function renderSelect(){
@@ -93,7 +100,7 @@ function renderSelect(){
   $('#gridStep').textContent=['STEP 01','STEP 02','STEP 03'][s]+' / '+(st.mode==='ranked'?'RANKED':st.mode==='local'?'LOCAL VERSUS':'VS CPU');
   $('#fighterGrid').hidden = s===2; $('#arenaGrid').hidden = s!==2;
   $('#fighterGrid .random').style.display = s===1?'':'none';
-  $('#p1Side').textContent=M.side[0]; $('#p2Side').textContent=M.side[1];
+  $('#p1Side').textContent=M.side[0]; $('#p2Side').textContent=M.side[1]; $('#cpuDiff').hidden = st.mode!=='cpu';
   setSide(1, st.p1);
   if(s===0){ $('#p1State').textContent='SELECTING'; setSide(2,null); $('#p2Up').textContent=ranked?'MATCHMAKING':'UP NEXT'; }
   else { $('#p1State').textContent='LOCKED'; $('#p2Up').textContent = s===1?'SELECTING':'LOCKED'; setSide(2, st.p2, st.randomCpu&&s===1); }
@@ -127,7 +134,7 @@ $('#lockBtn').onclick=lockIn;
 function lockIn(){
   if($('#lockBtn').disabled) return;
   Au.sfx('lock');
-  if(st.mode==='ranked'){ startQueue(); return; }
+  if(st.mode==='ranked'){ if(!st.bindsShown){ st.bindsShown=true; openHow(true,()=>startQueue()); } else startQueue(); return; }
   if(st.step<2){ openSelect(st.step+1); return; }
   startMatch();
 }
@@ -142,6 +149,7 @@ function startMatch(){
   st.fight = new DD.Game.Fight({ p1:st.p1, p2, arena:st.arena, ai: local?null:new DD.Game.CPU(st.diff), labels: local?['P1','P2']:['YOU','CPU'], onEnd:endMatch });
   $$('.overlay').forEach(o=>o.hidden=true);
   show('game'); Au.playSong(st.arena.music,true); resetInput();
+  if(!st.bindsShown){ st.bindsShown=true; openHow(true); }
 }
 function endMatch(winIdx,fight){
   const local=st.mode==='local', won=winIdx===0, w=fight.p[winIdx];
@@ -179,13 +187,13 @@ document.addEventListener('click',e=>{
   if(act==='title') quitToTitle();
   if(act==='forfeit') forfeit();
   if(act==='requeue'){ closeOnline(); st.fight=null; $$('.overlay').forEach(o=>o.hidden=true); st.mode='ranked'; openSelect(0); startQueue(); }
-  if(act==='closeHow'){ $('#howOv').hidden=true; if(st.fight && !st.net && $('#pauseOv').hidden) st.fight.paused=false; }
+  if(act==='closeHow') closeHow();
   if(act==='closeLb') $('#lbOv').hidden=true;
   if(act==='refreshLb') openLeaderboard();
   if(act==='rename') openNameModal(true);
 });
 $('#pauseBtn').onclick=()=>pauseGame(true);
-$('#howOv').addEventListener('click',e=>{ if(e.target.id==='howOv'){ $('#howOv').hidden=true; if(st.fight && !st.net && $('#pauseOv').hidden) st.fight.paused=false; } });
+$('#howOv').addEventListener('click',e=>{ if(e.target.id==='howOv') closeHow(); });
 $('#lbOv').addEventListener('click',e=>{ if(e.target.id==='lbOv') $('#lbOv').hidden=true; });
 
 // ---------- online: profile ----------
@@ -337,7 +345,7 @@ function resetInput(){ for(const o of [kb[0],kb[1],mouse,touch]) for(const k in 
 document.addEventListener('keydown',e=>{
   if(!$('#nameOv').hidden){ if(e.code==='Escape') $('#nameCancel').click(); return; }
   if(!$('#lbOv').hidden){ if(e.code==='Escape') $('#lbOv').hidden=true; return; }
-  if(!$('#howOv').hidden){ if(e.code==='Escape'){ $('#howOv').hidden=true; if(st.fight&&!st.net&&$('#pauseOv').hidden) st.fight.paused=false; } return; }
+  if(!$('#howOv').hidden){ if(e.code==='Escape'||e.code==='Enter'){ e.preventDefault(); closeHow(); } return; }
   if(!$('#queueOv').hidden){ if(e.code==='Escape'&&st.q) cancelQueue(); return; }
   if(st.screen==='game'){
     if(e.code==='Escape'||(e.code==='KeyP'&&st.mode!=='local')){ if(st.fight&&!st.fight.over) pauseGame($('#pauseOv').hidden); e.preventDefault(); return; }
@@ -354,6 +362,7 @@ document.addEventListener('mousedown',e=>{ if(!mouseOk(e)) return; const k=MOUSE
 document.addEventListener('mouseup',e=>{ const k=MOUSE[e.button]; if(k) mouse[k]=false; });
 document.addEventListener('contextmenu',e=>{ if(st.screen==='game' && !e.target.closest('.overlay')) e.preventDefault(); });
 document.addEventListener('auxclick',e=>{ if(st.screen==='game') e.preventDefault(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ resetInput(); if(st.fight&&!st.net&&st.screen==='game'&&!st.fight.over) pauseGame(true); } });
 window.addEventListener('blur',()=>{ resetInput(); if(st.fight&&!st.net&&st.screen==='game'&&!st.fight.over) pauseGame(true); });
 // gamepads (standard mapping): X punch, A kick, Y special, B / bumpers block, d-pad or left stick to move
 function padInput(i){
