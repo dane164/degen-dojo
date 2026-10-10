@@ -132,6 +132,35 @@ function line(c,a,b,w,col){
   }
 }
 function lerp(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]; }
+function capsule(c,a,b,w0,w1,col,ox,oy){ // tapered round-ended stroke
+  c.fillStyle=col; const dx=b[0]-a[0], dy=b[1]-a[1], n=Math.max(2,Math.ceil(Math.hypot(dx,dy)*2));
+  for(let i=0;i<=n;i++){ const t=i/n, w=w0+(w1-w0)*t, x=OX+a[0]+dx*t+(ox||0), y=OY+a[1]+dy*t+(oy||0); c.beginPath(); c.arc(x,y,w/2,0,Math.PI*2); c.fill(); }
+}
+function limb(c,a,b,w0,w1,col){ // shadow side, base, rim light
+  capsule(c,a,b,w0,w1,shade(col,0.7),0.7,0.8);
+  capsule(c,a,b,w0,w1,col,0,0);
+  capsule(c,a,b,w0*0.32,w1*0.32,shade(col,1.28),-w0*0.22,-w0*0.22);
+}
+function fist(c,x,y,col,r){ r=r||2.7; c.fillStyle=shade(col,0.72); c.beginPath(); c.arc(OX+x+0.5,OY+y+0.6,r,0,7); c.fill();
+  c.fillStyle=col; c.beginPath(); c.arc(OX+x,OY+y,r,0,7); c.fill(); c.fillStyle=shade(col,1.25); c.beginPath(); c.arc(OX+x-0.8,OY+y-0.9,r*0.42,0,7); c.fill();
+  c.fillStyle=shade(col,0.8); c.fillRect(OX+x+r*0.2,OY+y-r*0.7,0.5,r*1.3); }
+function shoe(c,ft,col,back){ const x=OX+ft[0], y=OY+ft[1], cc=back?shade(col,0.72):col;
+  c.fillStyle=cc; c.beginPath(); c.moveTo(x-3.5,y+1); c.lineTo(x-3.5,y-2.6); c.quadraticCurveTo(x+1,y-3.4,x+3.5,y-1.6); c.quadraticCurveTo(x+6,y-1,x+5.8,y+1); c.closePath(); c.fill();
+  c.fillStyle=shade(cc,1.35); c.fillRect(x-1,y-2.6,3,0.8);
+  c.fillStyle=back?'#bbb':'#f4f0e8'; c.fillRect(x-3.5,y+0.2,9.3,1.1); }
+function torso(c,J,s,top){
+  const sx=J.neck[0]-J.hip[0], sy=J.neck[1]-J.hip[1], L=Math.hypot(sx,sy)||1, nx=-sy/L, ny=sx/L;
+  const big=s.size>1, sw=(big?17:15)/2, ww=(big?14:11.5)/2;
+  const N=[OX+J.neck[0],OY+J.neck[1]+1.5], H=[OX+J.hip[0],OY+J.hip[1]];
+  const pts=[[N[0]+nx*sw,N[1]+ny*sw],[H[0]+nx*ww,H[1]+ny*ww],[H[0]-nx*ww,H[1]-ny*ww],[N[0]-nx*sw,N[1]-ny*sw]];
+  c.save(); c.beginPath(); pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1])); c.closePath();
+  c.fillStyle=top; c.fill(); c.clip();
+  const g=c.createLinearGradient(N[0]-nx*sw,N[1]-ny*sw,N[0]+nx*sw,N[1]+ny*sw); g.addColorStop(0,shade(top,0.68)); g.addColorStop(0.45,top); g.addColorStop(1,shade(top,1.18));
+  c.fillStyle=g; c.fillRect(Math.min(H[0],N[0])-14,Math.min(H[1],N[1])-8,34,Math.abs(sy)+18);
+  c.fillStyle=shade(top,1.3); c.fillRect(N[0]-sw,N[1]-1,sw*2,1.4);
+  c.fillStyle=shade(top,0.6); c.fillRect(H[0]-ww-1,H[1]-1.6,ww*2+2,1.6);
+  c.restore();
+}
 
 // ---------- heads ----------
 function drawHead(c,s,h,f){
@@ -180,7 +209,9 @@ function drawHead(c,s,h,f){
       px(c,x-1,y-6,9,13,k); px(c,x+3,y-3,2,2,'#fff'); px(c,x+4,y-2,1,1,'#000'); px(c,x+5,y+4,2,1,'#888'); px(c,x-4,y-4,4,2,k); break;
     default: { // human
       px(c,x-6,y-7,12,14,k); px(c,x+5,y-2,2,4,k); // face + nose
-      px(c,x-6,y-1,2,3,shade(k,0.85)); // ear
+      px(c,x-6,y-7,12,1.5,shade(k,1.1)); px(c,x-6,y+5.5,12,1.5,shade(k,0.82)); px(c,x+5,y+1.5,2,0.5,shade(k,0.7));
+      px(c,x-6,y-1,2,3,shade(k,0.85)); px(c,x-5.5,y-0.5,1,1.5,shade(k,0.7));
+      px(c,x+3.5,y+1,2,1,'rgba(255,110,110,0.35)');
       const hc = s.hairC||'#2b1405';
       switch(s.hair){
         case 'short': px(c,x-7,y-9,13,4,hc); px(c,x-7,y-6,3,4,hc); break;
@@ -193,15 +224,16 @@ function drawHead(c,s,h,f){
         case 'mohawk': px(c,x-3,y-14,5,7,hc); px(c,x-7,y-8,13,1,shade(k,0.8)); break;
         case 'anime': for(let i=0;i<6;i++) px(c,x-10+i*3,y-13+(i%2)*3,4,6,hc); px(c,x-8,y-8,15,3,hc); px(c,x+3,y-7,3,4,hc); px(c,x-9,y-6,3,6,hc); break;
         case 'hood': px(c,x-8,y-10,15,4,hc); px(c,x-9,y-7,4,15,hc); px(c,x+5,y-7,2,3,hc); break;
-        case 'bald': px(c,x-5,y-8,10,1,shade(k,1.08)); px(c,x-7,y-4,2,3,'#6b4a2b'); break;
+        case 'bald': px(c,x-5,y-8,10,1,shade(k,1.08)); px(c,x-7,y-4,2,3,'#6b4a2b'); px(c,x-3,y-7.5,3,1,'rgba(255,255,255,0.45)'); break;
       }
+      if(s.hair && !['bald','strawhat','cap','hood'].includes(s.hair)){ px(c,x-4,y-9,4,0.5,shade(hc,1.6)); px(c,x+1,y-9.5,2.5,0.5,shade(hc,1.45)); }
       const e = s.eyes||'normal';
       if(e==='shades'){ px(c,x,y-4,8,3,'#111'); px(c,x-4,y-4,4,1,'#111'); px(c,x+1,y-4,2,1,'#5ad1ff'); px(c,x+2,y+3,4,1,'#7a3b2a'); }
       else if(e==='shock'){ px(c,x+1,y-5,3,3,'#fff'); px(c,x+2,y-4,1,1,'#000'); px(c,x+2,y+1,4,4,'#3a0a0a'); px(c,x+1,y-7,4,1,'#2b1405'); }
-      else if(e==='angry'){ px(c,x+2,y-3,2,2,'#111'); px(c,x+1,y-5,4,1,'#2b1405'); px(c,x+2,y+3,4,1,'#7a3b2a'); px(c,x+4,y+2,1,1,'#7a3b2a'); }
-      else if(e==='tired'){ px(c,x+2,y-3,2,2,'#111'); px(c,x+1,y-1,4,1,'#8a5a8a'); px(c,x+2,y+3,4,1,'#7a3b2a'); }
+      else if(e==='angry'){ px(c,x+1.5,y-3.5,3,2.5,'#ffffff'); px(c,x+2.5,y-3,1.5,2,'#1a0b02'); px(c,x+1,y-5,4,1,'#2b1405'); px(c,x+2,y+3,4,1,'#7a3b2a'); px(c,x+4,y+2,1,1,'#7a3b2a'); }
+      else if(e==='tired'){ px(c,x+1.5,y-3,3,2,'#f0e8e0'); px(c,x+2.5,y-2.5,1.5,1.5,'#1a0b02'); px(c,x+1,y-1,4,1,'#8a5a8a'); px(c,x+2,y+3,4,1,'#7a3b2a'); }
       else if(e==='smug'){ px(c,x+2,y-3,3,1,'#111'); px(c,x+1,y-4,4,1,'#2b1405'); px(c,x+1,y+3,5,1,'#7a3b2a'); px(c,x+5,y+2,1,1,'#7a3b2a'); }
-      else { px(c,x+2,y-3,2,2,'#111'); px(c,x+1,y-5,3,1,'#2b1405'); px(c,x+2,y+3,4,1,'#7a3b2a'); }
+      else { px(c,x+1.5,y-3.5,3,2.5,'#ffffff'); px(c,x+2.5,y-3,1.5,2,'#1a0b02'); px(c,x+2.5,y-3,0.5,0.5,'#ffffff'); px(c,x+1,y-5,3.5,1,'#2b1405'); px(c,x+2,y+3,4,1,'#7a3b2a'); px(c,x+2.5,y+3.5,3,0.5,shade(k,0.75)); }
     }
   }
 }
@@ -210,7 +242,7 @@ function drawHead(c,s,h,f){
 function drawFighterRaw(c, s, poseName, f){
   if(poseName==='ball') return drawBall(c,s,f);
   const J = pose(poseName, f);
-  const top=s.top, pants=s.pants, skin=s.skin, shoe=s.shoes;
+  const top=s.top, pants=s.pants, skin=s.skin, shoe_=s.shoes;
   const dk = v=>shade(v,0.72);
   const hasHumanArms = !['bear','bull','whale','shiba','cat','sheep','goblin'].includes(s.head);
   const handC = s.acc==='paperHands' ? '#ffffff' : (['bear','bull','shiba','cat','sheep','whale','goblin'].includes(s.head)? skin : skin);
@@ -221,14 +253,13 @@ function drawFighterRaw(c, s, poseName, f){
   if(s.acc==='scarf'){ const n=J.neck; line(c,[n[0]-2,n[1]+2],[n[0]-14,n[1]+4+(f%2)*2],3,'#e0262d'); line(c,[n[0]-12,n[1]+4],[n[0]-20,n[1]+1+(f%2)*3],3,'#e0262d'); }
 
   // back leg + back arm
-  line(c,J.hip,J.bK,6,dk(pants)); line(c,J.bK,J.bF,5,dk(pants)); px(c,J.bF[0]-3,J.bF[1]-2,8,3,dk(shoe));
-  line(c,J.bS,J.bE,5,dk(top)); line(c,J.bE,J.bH,4,dk(hasHumanArms?skin:skin));
+  limb(c,J.hip,J.bK,6.5,5.5,dk(pants)); limb(c,J.bK,J.bF,5.5,4.2,dk(pants)); shoe(c,J.bF,shoe_,true);
+  limb(c,J.bS,J.bE,5.2,4.4,dk(top)); limb(c,J.bE,J.bH,4.2,3.6,dk(skin));
   drawHand(c,s,J.bH,true,handC,f);
 
   // torso
   const tw = s.size>1 ? 15 : 13;
-  const steps=10;
-  for(let i=0;i<=steps;i++){ const p=lerp(J.hip,J.neck,i/steps); px(c,p[0]-tw/2,p[1]-2,tw,4,top); }
+  torso(c,J,s,top);
   if(s.acc==='belt'){ const p=lerp(J.hip,J.neck,0.12); px(c,p[0]-tw/2,p[1]-1,tw,2,'#111'); px(c,p[0]+3,p[1]-1,2,5,'#111'); }
   if(s.acc==='tie'){ const a=lerp(J.hip,J.neck,0.95), b=lerp(J.hip,J.neck,0.35); line(c,a,b,2,'#e0262d'); const w=lerp(J.hip,J.neck,0.98); px(c,w[0]-2,w[1]-1,4,2,'#fff'); }
   if(s.head==='whale'){ const p=lerp(J.hip,J.neck,0.5); px(c,p[0]+2,p[1]-6,2,10,'#fff'); }
@@ -240,11 +271,13 @@ function drawFighterRaw(c, s, poseName, f){
   if(s.id==='main'){ const p=lerp(J.hip,J.neck,0.55); px(c,p[0]-1,p[1]-3,3,6,'#ffb000'); }
 
   // front leg
-  line(c,J.hip,J.fK,6,pants); line(c,J.fK,J.fF,5,pants); px(c,J.fF[0]-3,J.fF[1]-2,9,3,shoe);
+  limb(c,J.hip,J.fK,7,5.8,pants); limb(c,J.fK,J.fF,5.8,4.4,pants); shoe(c,J.fF,shoe_,false);
 
   // head (neck first)
-  line(c,J.neck,lerp(J.neck,J.head,0.5),4,skin);
+  capsule(c,J.neck,lerp(J.neck,J.head,0.5),4.2,4,shade(skin,0.8),0,0);
+  c.save(); const hx=OX+J.head[0], hy=OY+J.head[1]; c.translate(hx,hy); c.scale(1.12,1.12); c.translate(-hx,-hy);
   drawHead(c,s,J.head,f);
+  c.restore();
   if(s.acc==='monocle'){ px(c,J.head[0]+2,J.head[1]-5,5,1,'#ffd23f'); px(c,J.head[0]+2,J.head[1]-1,5,1,'#ffd23f'); px(c,J.head[0]+2,J.head[1]-4,1,3,'#ffd23f'); px(c,J.head[0]+6,J.head[1]-4,1,3,'#ffd23f'); }
   if(s.acc==='gasmask'){ px(c,J.head[0]+1,J.head[1]+1,8,5,'#444'); px(c,J.head[0]+6,J.head[1]+2,3,3,'#2f7d6d'); line(c,[J.head[0]+2,J.head[1]+6],[J.neck[0]-6,J.neck[1]+8],2,'#555'); }
   if(s.acc==='bang'){ px(c,J.head[0]-1,J.head[1]-20,3,7,'#ffd23f'); px(c,J.head[0]-1,J.head[1]-11,3,2,'#ffd23f'); }
@@ -252,14 +285,15 @@ function drawFighterRaw(c, s, poseName, f){
   if(s.acc==='sprout'){ px(c,J.head[0]-1,J.head[1]-15,2,4,'#3fae2a'); px(c,J.head[0]-4,J.head[1]-16,3,2,'#5fd13a'); px(c,J.head[0]+1,J.head[1]-17,3,2,'#5fd13a'); }
 
   // front arm
-  line(c,J.fS,J.fE,5,top); line(c,J.fE,J.fH,4,hasHumanArms?skin:skin);
+  limb(c,J.fS,J.fE,5.6,4.6,top); limb(c,J.fE,J.fH,4.4,3.8,skin);
   drawHand(c,s,J.fH,false,handC,f);
 }
 
 function drawHand(c,s,h,back,handC,f){
   const [x,y]=h;
-  if(s.acc==='diamondFists'){ px(c,x-3,y-3,7,7,back?'#3aa7d6':'#5ad1ff'); px(c,x-1,y-2,2,2,'#e9fbff'); return; }
-  px(c,x-2,y-2,5,5,back?shade(handC,0.75):handC);
+  if(s.acc==='diamondFists'){ const cx=OX+x, cy=OY+y; c.fillStyle=back?'#2a87b6':'#3aa7d6'; c.beginPath(); c.moveTo(cx,cy-4.5); c.lineTo(cx+4,cy); c.lineTo(cx,cy+4.5); c.lineTo(cx-4,cy); c.closePath(); c.fill();
+    c.fillStyle=back?'#5ad1ff':'#9be8ff'; c.beginPath(); c.moveTo(cx,cy-4.5); c.lineTo(cx+4,cy); c.lineTo(cx,cy); c.closePath(); c.fill(); px(c,x-1.5,y-2,1.5,1.5,'#ffffff'); return; }
+  fist(c,x,y,back?shade(handC,0.75):handC);
   if(back) return;
   if(s.acc==='nozzle'){ px(c,x+1,y-1,7,3,'#111'); px(c,x+7,y-1,2,2,'#ffd23f'); }
   if(s.acc==='phone'){ px(c,x+1,y-6,4,8,'#111'); px(c,x+2,y-5,2,5,(f%2)?'#7fdcff':'#bff0ff'); }
@@ -307,13 +341,14 @@ function flash(cv){
 }
 
 function get(spec, poseName, frame, alt, white){
-  const key=spec.id+'|'+poseName+'|'+(frame%8)+'|'+(alt?1:0)+'|'+(white?1:0);
+  frame=((frame%4)+4)%4;
+  const key=spec.id+'|'+poseName+'|'+frame+'|'+(alt?1:0)+'|'+(white?1:0);
   let cv=cache.get(key);
   if(cv) return cv;
   if(white){ cv=flash(get(spec,poseName,frame,alt,false)); cache.set(key,cv); return cv; }
   const base=document.createElement('canvas'); base.width=W*RES; base.height=H*RES;
   const c=base.getContext('2d'); c.scale(RES,RES);
-  drawFighterRaw(c,spec,poseName,frame%8);
+  drawFighterRaw(c,spec,poseName,frame);
   c.setTransform(1,0,0,1,0,0);
   outline(c,alt);
   cv=base;
@@ -337,5 +372,11 @@ function portrait(spec, scale, poseName, alt){ // tight-cropped, crisp upscale
   return out.toDataURL();
 }
 
-DD.Sprites = { get, portrait, shade, W, H, RES };
+// background pre-warm: render a fighter's poses in spare frame time so first use never hitches
+const ANIM_POSES=['idle','walk','charge','win','dizzy','ball'], TWO=['punch','kick','cpunch','ckick','upper','heavy','round','lunge','throw'], ONE=['crouch','jump','jkick','jpunch','block','cblock','hit','kd','special','dash','grab','dive'];
+const warmQ=[], warmed=new Set();
+function prewarm(spec,alt){ const k=spec.id+(alt?'a':''); if(warmed.has(k)) return; warmed.add(k);
+  ANIM_POSES.forEach(p=>{ for(let f=0;f<4;f++) warmQ.push([spec,p,f,alt]); }); TWO.forEach(p=>{ warmQ.push([spec,p,0,alt],[spec,p,1,alt]); }); ONE.forEach(p=>warmQ.push([spec,p,0,alt])); }
+function warmTick(budgetMs){ const t=performance.now(); while(warmQ.length && performance.now()-t<budgetMs){ const [s,p,f,a]=warmQ.shift(); get(s,p,f,a,false); } }
+DD.Sprites = { get, portrait, shade, W, H, RES, prewarm, warmTick };
 })();

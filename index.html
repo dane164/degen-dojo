@@ -24,6 +24,8 @@
   <span class="ticker">$DOJO</span>
   <div class="top-actions">
     <span class="hint" id="soundHint">CLICK FOR 8-BIT SOUND</span>
+    <button class="chip" id="profileChip" hidden aria-label="Your ranked profile"></button>
+    <button class="icon-btn" id="lbTop" aria-label="Leaderboard">🏆</button>
     <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
     <button class="icon-btn" id="muteBtn" aria-label="Toggle sound">♪</button>
   </div>
@@ -39,13 +41,17 @@
     </div>
   </div>
   <div class="title-card">
-    <button class="big-btn" id="startBtn"><span>START GAME</span><span class="arrow">↗</span></button>
-    <button class="ghost-btn wide" id="quickBtn">QUICK FIGHT · RANDOM EVERYTHING</button>
-    <div class="diff" role="radiogroup" aria-label="Difficulty">
+    <button class="big-btn" id="rankedBtn"><span>RANKED ONLINE</span><span class="arrow">↗</span></button>
+    <div class="mode-row">
+      <button class="ghost-btn" id="cpuBtn">VS CPU</button>
+      <button class="ghost-btn" id="localBtn">VS FRIEND · LOCAL</button>
+    </div>
+    <div class="diff" role="radiogroup" aria-label="CPU difficulty">
       <span>CPU:</span>
       <button data-diff="easy">EASY</button><button data-diff="normal" class="on">NORMAL</button><button data-diff="hard">HARD</button>
     </div>
-    <button class="link-btn" id="howBtn">HOW TO PLAY</button>
+    <div class="title-links"><button class="link-btn" id="lbBtn">LEADERBOARD</button><i>·</i><button class="link-btn" id="quickBtn">QUICK FIGHT</button><i>·</i><button class="link-btn" id="howBtn">HOW TO PLAY</button></div>
+    <p class="online-line" id="onlineLine"></p>
   </div>
   <p class="stats-line">24 FIGHTERS <i>✳</i> 12 ARENAS <i>✳</i> YOU VS CPU</p>
 </main>
@@ -64,13 +70,13 @@
   </div>
   <section class="vs-panel">
     <div class="side p1">
-      <div class="side-top"><span>YOU / 1P</span><span class="state" id="p1State">SELECTING</span></div>
+      <div class="side-top"><span id="p1Side">YOU / 1P</span><span class="state" id="p1State">SELECTING</span></div>
       <img id="p1Img" alt="" class="big-port">
       <div class="side-info"><h3 id="p1Name">—</h3><p id="p1Tag"></p><p class="sp" id="p1Sp"></p></div>
     </div>
     <div class="vs">VS</div>
     <div class="side p2">
-      <div class="side-top"><span id="p2Up">UP NEXT</span><span>CPU</span></div>
+      <div class="side-top"><span id="p2Up">UP NEXT</span><span id="p2Side">CPU</span></div>
       <img id="p2Img" alt="" class="big-port">
       <div class="q" id="p2Q">?</div>
       <div class="side-info r"><h3 id="p2Name">CPU OPPONENT</h3><p id="p2Tag">CHOOSE AFTER YOUR FIGHTER.</p><p class="sp" id="p2Sp"></p></div>
@@ -109,10 +115,16 @@
         <button data-k="sp" class="spb">SP</button>
       </div>
     </div>
-    <div class="keys-line" aria-label="Controls">
+    <div class="keys-line" id="keysSolo" aria-label="Controls">
       <span><kbd>A</kbd><kbd>D</kbd> move</span><span><kbd>W</kbd> jump</span><span><kbd>S</kbd> crouch</span>
       <span><kbd>L-CLICK</kbd> punch</span><span><kbd>R-CLICK</kbd> kick</span><span><kbd>SPACE</kbd> block · tap to parry</span>
-      <span><kbd>SPACE</kbd>+<kbd>L-CLICK</kbd> throw</span><span><kbd>E</kbd>/<kbd>MID-CLICK</kbd> special</span><span><kbd>ESC</kbd> pause</span>
+      <span><kbd>SPACE</kbd>+<kbd>L-CLICK</kbd> throw</span><span><kbd>E</kbd>/<kbd>MID-CLICK</kbd> special</span><span><kbd>ESC</kbd> menu</span>
+    </div>
+    <div class="keys-line local" id="keysLocal" aria-label="Local versus controls" hidden>
+      <span class="who">P1</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> kick</span><span><kbd>T</kbd> block</span><span><kbd>H</kbd> special</span>
+      <span class="sep"></span>
+      <span class="who p2">P2</span><span><kbd>←↑↓→</kbd> move</span><span><kbd>,</kbd>/<kbd>NUM1</kbd> punch</span><span><kbd>.</kbd>/<kbd>NUM2</kbd> kick</span><span><kbd>R-SHIFT</kbd>/<kbd>NUM0</kbd> block</span><span><kbd>/</kbd>/<kbd>NUM3</kbd> special</span>
+      <span class="sep"></span><span>Gamepads work too: pad 1 is P1, pad 2 is P2</span>
     </div>
   </div>
 </main>
@@ -120,13 +132,16 @@
 <!-- OVERLAYS -->
 <div class="overlay" id="pauseOv" hidden>
   <div class="card">
-    <h2>PAUSED</h2>
-    <button class="big-btn sm" data-act="resume"><span>RESUME</span></button>
-    <button class="ghost-btn" data-act="restart">RESTART MATCH</button>
-    <button class="ghost-btn" data-act="select">CHANGE FIGHTERS</button>
-    <button class="ghost-btn" data-act="title">QUIT TO TITLE</button>
+    <h2 class="off-only">PAUSED</h2>
+    <h2 class="ol-only">RANKED MATCH</h2>
+    <p class="ol-only center">The fight keeps running while this is open.</p>
+    <button class="big-btn sm" data-act="resume"><span class="off-only">RESUME</span><span class="ol-only">KEEP FIGHTING</span></button>
+    <button class="ghost-btn off-only" data-act="restart">RESTART MATCH</button>
+    <button class="ghost-btn off-only" data-act="select">CHANGE FIGHTERS</button>
+    <button class="ghost-btn off-only" data-act="title">QUIT TO TITLE</button>
+    <button class="ghost-btn ol-only danger" data-act="forfeit">FORFEIT (COUNTS AS A LOSS)</button>
   </div>
-</div>
+</div>>
 
 <div class="overlay" id="resultOv" hidden>
   <div class="card result">
@@ -134,8 +149,10 @@
     <h2 id="resTitle">YOU WIN</h2>
     <img id="resImg" alt="" class="res-port">
     <p id="resLine"></p>
+    <p class="res-elo" id="resElo" hidden></p>
     <dl class="res-stats" id="resStats"></dl>
     <button class="big-btn sm" data-act="restart"><span>REMATCH</span><span class="arrow">↗</span></button>
+    <button class="big-btn sm" data-act="requeue"><span>FIND ANOTHER MATCH</span><span class="arrow">↗</span></button>
     <button class="ghost-btn" data-act="next">NEW CPU, SAME FIGHTER</button>
     <button class="ghost-btn" data-act="select">CHANGE FIGHTERS</button>
     <button class="ghost-btn" data-act="title">TITLE SCREEN</button>
@@ -146,7 +163,7 @@
   <div class="card how">
     <button class="close" data-act="closeHow" aria-label="Close">×</button>
     <h2>DOJO RULES</h2>
-    <p>Pick a fighter, a CPU and an arena. Best of three rounds, 60 seconds each. If time runs out, highest health takes the round.</p>
+    <p>Three ways to play: <b>Ranked Online</b> (matched by ELO, random arena), <b>VS CPU</b>, or <b>VS Friend</b> on one keyboard. Best of three rounds, 60 seconds each. If time runs out, highest health takes the round.</p>
     <h3>Controls</h3>
     <table class="moves">
       <tr><td>Move / jump / crouch</td><td><kbd>A</kbd> <kbd>D</kbd> · <kbd>W</kbd> · <kbd>S</kbd> (or arrows). Double-tap to dash.</td></tr>
@@ -154,6 +171,9 @@
       <tr><td>Kick</td><td><kbd>R-CLICK</kbd> or <kbd>K</kbd></td></tr>
       <tr><td>Block</td><td>Hold <kbd>SPACE</kbd>. Hold <kbd>S</kbd> too for lows.</td></tr>
       <tr><td>Special</td><td><kbd>E</kbd>, <kbd>L</kbd> or <kbd>MID-CLICK</kbd> when the meter is full. Hold to charge.</td></tr>
+      <tr><td>Local P1</td><td><kbd>WASD</kbd> move, <kbd>F</kbd> punch, <kbd>G</kbd> kick, <kbd>T</kbd> block, <kbd>H</kbd> special</td></tr>
+      <tr><td>Local P2</td><td>Arrows move, <kbd>,</kbd> punch, <kbd>.</kbd> kick, <kbd>R-SHIFT</kbd> block, <kbd>/</kbd> special (or numpad 1/2/0/3)</td></tr>
+      <tr><td>Gamepad</td><td>X punch, A kick, B or bumpers block, Y special, Start for the menu</td></tr>
     </table>
     <h3>Move list</h3>
     <table class="moves">
@@ -176,12 +196,53 @@
   </div>
 </div>
 
+<div class="overlay" id="nameOv" hidden>
+  <form class="card" id="nameForm" autocomplete="off">
+    <h2 id="nameTitle">PICK A FIGHTER NAME</h2>
+    <p class="center">This is how you'll show up on the leaderboard. No sign-up: your profile is saved in this browser.</p>
+    <label class="field" for="nameInput">NAME</label>
+    <input id="nameInput" class="text-in" maxlength="16" placeholder="e.g. DiamondDane" spellcheck="false">
+    <p class="err" id="nameErr" role="alert"></p>
+    <button class="big-btn sm" id="nameGo" type="submit"><span>ENTER THE DOJO</span><span class="arrow">↗</span></button>
+    <button class="ghost-btn" id="nameCancel" type="button">CANCEL</button>
+  </form>
+</div>
+
+<div class="overlay" id="queueOv" hidden>
+  <div class="card queue">
+    <h2 id="qTitle">FINDING A MATCH</h2>
+    <div class="q-vs">
+      <div class="q-side"><img id="qMine" alt=""><b id="qMineName">YOU</b><small id="qMineElo"></small></div>
+      <div class="q-mid">VS</div>
+      <div class="q-side"><div class="q-wait"><span></span><span></span><span></span></div><img id="qOpp" alt=""><b id="qOppName">???</b><small id="qOppElo"></small></div>
+    </div>
+    <p class="center" id="qStatus">Searching…</p>
+    <p class="center small" id="qMeta"></p>
+    <button class="ghost-btn" id="qCancel">CANCEL</button>
+  </div>
+</div>
+
+<div class="overlay" id="lbOv" hidden>
+  <div class="card lb">
+    <button class="close" data-act="closeLb" aria-label="Close">×</button>
+    <h2>LEADERBOARD</h2>
+    <p class="center lb-me" id="lbMe"></p>
+    <div class="lb-wrap"><table class="lb-table"><thead><tr><th>#</th><th>DEGEN</th><th>TIER</th><th class="num">ELO</th><th class="num">W-L</th><th class="num">STREAK</th></tr></thead><tbody id="lbBody"></tbody></table></div>
+    <p class="center small" id="lbStats"></p>
+    <div class="tiers"><span class="tier t-paper-hands">PAPER HANDS</span><span class="tier t-retail">RETAIL 900</span><span class="tier t-degen">DEGEN 1050</span><span class="tier t-ape">APE 1200</span><span class="tier t-whale">WHALE 1350</span><span class="tier t-diamond-hands">DIAMOND HANDS 1500</span><span class="tier t-dojo-master">DOJO MASTER 1700</span></div>
+    <button class="ghost-btn" data-act="refreshLb">REFRESH</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
 <script src="js/data.js"></script>
 <script src="js/sprites.js"></script>
 <script src="js/arenas.js"></script>
 <script src="js/scene.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/game.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/online.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
