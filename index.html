@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>DEGEN DOJO — Retro Meme Fighter</title>
+<meta name="description" content="DEGEN DOJO: a free retro arcade fighter. 24 degens, 12 arenas, one dojo.">
+<meta name="theme-color" content="#ff6a00">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%232b1405'/%3E%3Crect x='2' y='3' width='12' height='2' fill='%23ff6a00'/%3E%3Crect x='4' y='5' width='2' height='8' fill='%23ff6a00'/%3E%3Crect x='10' y='5' width='2' height='8' fill='%23ff6a00'/%3E%3Crect x='3' y='8' width='10' height='2' fill='%23ffd23f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="bgPixels" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="brand" href="#" id="brandHome" aria-label="Degen Dojo home">
+    <span class="logo-mark" aria-hidden="true"></span>
+    <span class="brand-name">DEGEN DOJO</span>
+  </a>
+  <span class="ticker">$DOJO</span>
+  <div class="top-actions">
+    <span class="hint" id="soundHint">CLICK FOR 8-BIT SOUND</span>
+    <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
+    <button class="icon-btn" id="muteBtn" aria-label="Toggle sound">♪</button>
+  </div>
+</header>
+
+<!-- TITLE -->
+<main id="screen-title" class="screen active">
+  <div class="title-stage">
+    <canvas id="titleCanvas" width="480" height="270"></canvas>
+    <div class="title-overlay">
+      <p class="presents">THE DOJO IS OPEN</p>
+      <h1 class="logo"><span class="l1">DEGEN</span><span class="l2">DOJO</span></h1>
+    </div>
+  </div>
+  <div class="title-card">
+    <button class="big-btn" id="startBtn"><span>START GAME</span><span class="arrow">↗</span></button>
+    <div class="diff" role="radiogroup" aria-label="Difficulty">
+      <span>CPU:</span>
+      <button data-diff="easy">EASY</button><button data-diff="normal" class="on">NORMAL</button><button data-diff="hard">HARD</button>
+    </div>
+    <button class="link-btn" id="howBtn">HOW TO PLAY</button>
+  </div>
+  <p class="stats-line">24 FIGHTERS <i>✳</i> 12 ARENAS <i>✳</i> YOU VS CPU</p>
+</main>
+
+<!-- SELECT -->
+<main id="screen-select" class="screen">
+  <div class="sel-head">
+    <div><button class="back-link" id="backTitle">← TITLE SCREEN</button>
+    <h2 class="sel-title">DEGEN DOJO</h2></div>
+    <div class="step-count"><b id="stepNum">01</b> / <span id="stepLabel">SELECT YOUR FIGHTER</span></div>
+  </div>
+  <div class="steps">
+    <button class="step on" data-step="0">01 YOUR FIGHTER</button>
+    <button class="step" data-step="1">02 CPU OPPONENT</button>
+    <button class="step" data-step="2">03 ARENA</button>
+  </div>
+  <section class="vs-panel">
+    <div class="side p1">
+      <div class="side-top"><span>YOU / 1P</span><span class="state" id="p1State">SELECTING</span></div>
+      <img id="p1Img" alt="" class="big-port">
+      <div class="side-info"><h3 id="p1Name">—</h3><p id="p1Tag"></p><p class="sp" id="p1Sp"></p></div>
+    </div>
+    <div class="vs">VS</div>
+    <div class="side p2">
+      <div class="side-top"><span id="p2Up">UP NEXT</span><span>CPU</span></div>
+      <img id="p2Img" alt="" class="big-port">
+      <div class="q" id="p2Q">?</div>
+      <div class="side-info r"><h3 id="p2Name">CPU OPPONENT</h3><p id="p2Tag">CHOOSE AFTER YOUR FIGHTER.</p><p class="sp" id="p2Sp"></p></div>
+    </div>
+  </section>
+  <section class="lock-bar">
+    <div><b id="lockName">—</b><small id="lockHint">THEN CHOOSE YOUR CPU</small></div>
+    <button class="big-btn sm" id="lockBtn"><span>LOCK IN</span><span class="arrow">↗</span></button>
+  </section>
+  <section class="grid-wrap">
+    <div class="grid-head"><span id="gridTitle">SELECT YOUR FIGHTER</span><span id="gridStep">STEP 01 / YOUR SIDE</span></div>
+    <div class="grid" id="fighterGrid"></div>
+    <div class="grid arenas" id="arenaGrid" hidden></div>
+  </section>
+</main>
+
+<!-- GAME -->
+<main id="screen-game" class="screen">
+  <div class="game-wrap">
+    <div class="canvas-box" id="canvasBox">
+      <canvas id="game" width="480" height="270"></canvas>
+      <div class="scanlines" aria-hidden="true"></div>
+      <button class="pause-btn" id="pauseBtn" aria-label="Pause">II</button>
+    </div>
+    <div class="touch" id="touch">
+      <div class="dpad">
+        <button data-k="up" class="u">▲</button>
+        <button data-k="left" class="l">◀</button>
+        <button data-k="down" class="d">▼</button>
+        <button data-k="right" class="r">▶</button>
+      </div>
+      <div class="abtns">
+        <button data-k="p">P</button>
+        <button data-k="k">K</button>
+        <button data-k="block">BLK</button>
+        <button data-k="sp" class="spb">SP</button>
+      </div>
+    </div>
+    <p class="keys-line">MOVE A/D · JUMP W · CROUCH S · PUNCH J · KICK K · BLOCK SPACE · SPECIAL L · PAUSE ESC</p>
+  </div>
+</main>
+
+<!-- OVERLAYS -->
+<div class="overlay" id="pauseOv" hidden>
+  <div class="card">
+    <h2>PAUSED</h2>
+    <button class="big-btn sm" data-act="resume"><span>RESUME</span></button>
+    <button class="ghost-btn" data-act="restart">RESTART MATCH</button>
+    <button class="ghost-btn" data-act="select">CHANGE FIGHTERS</button>
+    <button class="ghost-btn" data-act="title">QUIT TO TITLE</button>
+  </div>
+</div>
+
+<div class="overlay" id="resultOv" hidden>
+  <div class="card result">
+    <p class="kicker" id="resKicker">MATCH OVER</p>
+    <h2 id="resTitle">YOU WIN</h2>
+    <img id="resImg" alt="" class="res-port">
+    <p id="resLine"></p>
+    <button class="big-btn sm" data-act="restart"><span>REMATCH</span><span class="arrow">↗</span></button>
+    <button class="ghost-btn" data-act="next">NEW CPU, SAME FIGHTER</button>
+    <button class="ghost-btn" data-act="select">CHANGE FIGHTERS</button>
+    <button class="ghost-btn" data-act="title">TITLE SCREEN</button>
+  </div>
+</div>
+
+<div class="overlay" id="howOv" hidden>
+  <div class="card how">
+    <button class="close" data-act="closeHow" aria-label="Close">×</button>
+    <h2>DOJO RULES</h2>
+    <p>Pick your fighter, lock in, pick a CPU (or Random), pick an arena. Best of three rounds, 60 seconds each. Highest health wins if time runs out. Mirror matches allowed.</p>
+    <ul>
+      <li><b>Move:</b> A / D or arrows. <b>Jump:</b> W / ↑ (hold a direction to jump over). <b>Crouch:</b> S / ↓. Double-tap left/right to dash.</li>
+      <li><b>Punch:</b> J (fast, short). <b>Kick:</b> K (slower, more reach). Hold ↓ for low attacks. Press in the air for jump attacks.</li>
+      <li><b>Block:</b> hold Space. Hold ↓ + Space for low attacks; stand-block jump-ins. Blocked hits do a little chip damage.</li>
+      <li><b>Special:</b> L when your meter is full. Meter fills by dealing and taking hits. Hold L while standing still to charge it, but you're wide open.</li>
+      <li><b>Pause:</b> Esc or P. On mobile, use the buttons under the arena.</li>
+    </ul>
+    <p class="tip">Whiffed attacks leave you open. The CPU punishes on Hard.</p>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/arenas.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
