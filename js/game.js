@@ -169,7 +169,7 @@ class Fight {
         f.invuln=2; f.vx=0;
         for(const k of ['p','k','sp','up','block']) if(f.inp[k] && !f.prev[k]) (f.wb=f.wb||{})[k]=1; // buffer wake-up inputs
         if(f.t<=14) break;
-        f.set('idle'); f.invuln=WAKE_INV; // wake-up: short hit/throw immunity, then act this same frame
+        f.set('idle'); f.invuln=WAKE_INV; f.stun=0; f.landLag=0; // wake-up: short hit/throw immunity, then act this same frame
       } // falls through
       case 'idle': case 'walk': case 'crouch': case 'block': case 'cblock': {
         if(f.stun>0){ f.stun--; f.vx*=0.85; break; }
@@ -211,7 +211,7 @@ class Fight {
       case 'dizzy': { f.vx*=0.8; if(f.t%10===0) this.spark(f.x+rand(-10,10),f.y-118*f.size/2,'#ffd23f',1,0,-0.5); if(f.t>85){ f.set('idle'); } break; }
       case 'attack': this.updateAttack(f,o); break;
       case 'hit': { f.vx*=0.88; if(--f.stun<=0 && f.grounded){ f.stun=0; f.combo=0; f.set('idle'); } break; }
-      case 'kd': { f.vx*=0.85; f.invuln=2; f.combo=0; f.wb=null; if(f.t>48){ f.set('getup'); } break; }
+      case 'kd': { f.vx*=0.85; f.invuln=2; f.combo=0; f.wb=null; f.stun=0; f.landLag=0; f.launched=false; if(f.t>48){ f.set('getup'); } break; }
       case 'special': this.updateSpecial(f,o); break;
     }
     if(f.state!=='getup') f.wb=null;
