@@ -150,7 +150,7 @@ function shoe(c,ft,col,back){ const x=OX+ft[0], y=OY+ft[1], cc=back?shade(col,0.
   c.fillStyle=back?'#bbb':'#f4f0e8'; c.fillRect(x-3.5,y+0.2,9.3,1.1); }
 function torso(c,J,s,top){
   const sx=J.neck[0]-J.hip[0], sy=J.neck[1]-J.hip[1], L=Math.hypot(sx,sy)||1, nx=-sy/L, ny=sx/L;
-  const big=s.size>1, sw=(big?17:15)/2, ww=(big?14:11.5)/2;
+  const big=s.size>1||s.wide, sw=(big?17:15)/2, ww=(big?14:11.5)/2;
   const N=[OX+J.neck[0],OY+J.neck[1]+1.5], H=[OX+J.hip[0],OY+J.hip[1]];
   const pts=[[N[0]+nx*sw,N[1]+ny*sw],[H[0]+nx*ww,H[1]+ny*ww],[H[0]-nx*ww,H[1]-ny*ww],[N[0]-nx*sw,N[1]-ny*sw]];
   c.save(); c.beginPath(); pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1])); c.closePath();
@@ -258,7 +258,7 @@ function drawFighterRaw(c, s, poseName, f){
   drawHand(c,s,J.bH,true,handC,f);
 
   // torso
-  const tw = s.size>1 ? 15 : 13;
+  const tw = (s.size>1||s.wide) ? 15 : 13;
   torso(c,J,s,top);
   if(s.acc==='belt'){ const p=lerp(J.hip,J.neck,0.12); px(c,p[0]-tw/2,p[1]-1,tw,2,'#111'); px(c,p[0]+3,p[1]-1,2,5,'#111'); }
   if(s.acc==='tie'){ const a=lerp(J.hip,J.neck,0.95), b=lerp(J.hip,J.neck,0.35); line(c,a,b,2,'#e0262d'); const w=lerp(J.hip,J.neck,0.98); px(c,w[0]-2,w[1]-1,4,2,'#fff'); }
@@ -312,7 +312,10 @@ function drawBall(c,s,f){ // Loaf Mode
 
 function outline(c, alt){
   const BW=W*RES, BH=H*RES;
-  const img=c.getImageData(0,0,BW,BH), d=img.data, o=new Uint8ClampedArray(d);
+  const img=c.getImageData(0,0,BW,BH), d=img.data;
+  // hard alpha: kill anti-aliased fringe so there's no light halo/gaps between fill and outline
+  for(let i=3;i<d.length;i+=4) d[i] = d[i]>=110 ? 255 : 0;
+  const o=new Uint8ClampedArray(d);
   const oc=[0x1a,0x0b,0x02];
   const A=(x,y)=> x>=0&&y>=0&&x<BW&&y<BH ? d[(y*BW+x)*4+3] : 0;
   for(let y=0;y<BH;y++) for(let x=0;x<BW;x++){
@@ -324,8 +327,8 @@ function outline(c, alt){
       if(k!==1){ o[i]=Math.min(255,d[i]*k); o[i+1]=Math.min(255,d[i+1]*k); o[i+2]=Math.min(255,d[i+2]*k); }
       continue;
     }
-    // 2px outline at backing res (= 1 logical px), rounded corners
-    let n=0; for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){ if(Math.abs(dx)+Math.abs(dy)>3) continue; if(A(x+dx,y+dy)){ n=1; dy=3; break; } }
+    // thin, gap-free outline: 1 backing px incl. diagonals (closes corner gaps), +1 on the bottom/right for weight
+    const n = A(x-1,y)||A(x+1,y)||A(x,y-1)||A(x,y+1)||A(x-1,y-1)||A(x+1,y-1)||A(x-1,y+1)||A(x+1,y+1)||A(x-2,y)||A(x,y-2);
     if(n){ o[i]=oc[0];o[i+1]=oc[1];o[i+2]=oc[2];o[i+3]=255; }
   }
   if(alt){ // mirror palette: rotate channels on non-outline pixels

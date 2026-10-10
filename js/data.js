@@ -46,7 +46,7 @@ DD.FIGHTERS = [
     special:{ name:'Zoomies', type:'multiDash', desc:'Three lightning dashes straight through them.' }, stats:{spd:1.2,pow:0.9,def:0.85} },
   { id:'cat', name:'Loaf Cat', tag:'IF I FITS I SITS', head:'cat', skin:'#9a9a9a', top:'#f4f4f4', pants:'#f4f4f4', shoes:'#9a9a9a', acc:'belt',
     special:{ name:'Loaf Mode', type:'invulnRoll', desc:'Invulnerable loaf roll through the opponent.' }, stats:{spd:1.1,pow:0.95,def:0.95} },
-  { id:'unit', name:'Absolute Unit', tag:'IN AWE OF THE SIZE', head:'sheep', skin:'#3a3a3a', top:'#f2ece0', pants:'#3a3a3a', shoes:'#111', acc:null, size:1.18,
+  { id:'unit', name:'Absolute Unit', tag:'IN AWE OF THE SIZE', head:'sheep', skin:'#3a3a3a', top:'#f2ece0', pants:'#3a3a3a', shoes:'#111', acc:null, wide:true,
     special:{ name:'Body Slam', type:'commandGrab', desc:'Unblockable grab. Massive damage up close.' }, stats:{spd:0.8,pow:1.25,def:1.2} },
   { id:'doom', name:'Doomscroller', tag:'ONE MORE SCROLL', head:'human', hair:'hood', hairC:'#2b2b2b', skin:'#d8c6b8', top:'#2b2b2b', pants:'#1a1a1a', shoes:'#fff', acc:'phone', eyes:'tired',
     special:{ name:'Infinite Scroll', type:'barrage', desc:'Barrage of phones. It never ends.' }, stats:{spd:1.0,pow:0.95,def:0.95} },
