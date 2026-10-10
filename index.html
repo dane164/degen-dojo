@@ -31,7 +31,7 @@
 <!-- TITLE -->
 <main id="screen-title" class="screen active">
   <div class="title-stage">
-    <canvas id="titleCanvas" width="480" height="270"></canvas>
+    <canvas id="titleCanvas" width="960" height="540"></canvas>
     <div class="title-overlay">
       <p class="presents">THE DOJO IS OPEN</p>
       <h1 class="logo"><span class="l1">DEGEN</span><span class="l2">DOJO</span></h1>
@@ -39,6 +39,7 @@
   </div>
   <div class="title-card">
     <button class="big-btn" id="startBtn"><span>START GAME</span><span class="arrow">↗</span></button>
+    <button class="ghost-btn wide" id="quickBtn">QUICK FIGHT · RANDOM EVERYTHING</button>
     <div class="diff" role="radiogroup" aria-label="Difficulty">
       <span>CPU:</span>
       <button data-diff="easy">EASY</button><button data-diff="normal" class="on">NORMAL</button><button data-diff="hard">HARD</button>
@@ -74,14 +75,14 @@
       <div class="side-info r"><h3 id="p2Name">CPU OPPONENT</h3><p id="p2Tag">CHOOSE AFTER YOUR FIGHTER.</p><p class="sp" id="p2Sp"></p></div>
     </div>
   </section>
-  <section class="lock-bar">
-    <div><b id="lockName">—</b><small id="lockHint">THEN CHOOSE YOUR CPU</small></div>
-    <button class="big-btn sm" id="lockBtn"><span>LOCK IN</span><span class="arrow">↗</span></button>
-  </section>
   <section class="grid-wrap">
     <div class="grid-head"><span id="gridTitle">SELECT YOUR FIGHTER</span><span id="gridStep">STEP 01 / YOUR SIDE</span></div>
     <div class="grid" id="fighterGrid"></div>
     <div class="grid arenas" id="arenaGrid" hidden></div>
+  </section>
+  <section class="lock-bar">
+    <div><b id="lockName">—</b><small id="lockHint">THEN CHOOSE YOUR CPU</small></div>
+    <button class="big-btn sm" id="lockBtn"><span>LOCK IN</span><span class="arrow">↗</span></button>
   </section>
 </main>
 
@@ -89,7 +90,7 @@
 <main id="screen-game" class="screen">
   <div class="game-wrap">
     <div class="canvas-box" id="canvasBox">
-      <canvas id="game" width="480" height="270"></canvas>
+      <canvas id="game" width="960" height="540"></canvas>
       <div class="scanlines" aria-hidden="true"></div>
       <button class="pause-btn" id="pauseBtn" aria-label="Pause">II</button>
     </div>
@@ -107,7 +108,11 @@
         <button data-k="sp" class="spb">SP</button>
       </div>
     </div>
-    <p class="keys-line">MOVE A/D · JUMP W · CROUCH S · PUNCH J · KICK K · BLOCK SPACE · SPECIAL L · PAUSE ESC</p>
+    <div class="keys-line" aria-label="Controls">
+      <span><kbd>A</kbd><kbd>D</kbd> move</span><span><kbd>W</kbd> jump</span><span><kbd>S</kbd> crouch</span>
+      <span><kbd>L-CLICK</kbd> punch</span><span><kbd>R-CLICK</kbd> kick</span><span><kbd>SPACE</kbd> block · tap to parry</span>
+      <span><kbd>SPACE</kbd>+<kbd>L-CLICK</kbd> throw</span><span><kbd>E</kbd>/<kbd>MID-CLICK</kbd> special</span><span><kbd>ESC</kbd> pause</span>
+    </div>
   </div>
 </main>
 
@@ -128,6 +133,7 @@
     <h2 id="resTitle">YOU WIN</h2>
     <img id="resImg" alt="" class="res-port">
     <p id="resLine"></p>
+    <dl class="res-stats" id="resStats"></dl>
     <button class="big-btn sm" data-act="restart"><span>REMATCH</span><span class="arrow">↗</span></button>
     <button class="ghost-btn" data-act="next">NEW CPU, SAME FIGHTER</button>
     <button class="ghost-btn" data-act="select">CHANGE FIGHTERS</button>
@@ -139,15 +145,33 @@
   <div class="card how">
     <button class="close" data-act="closeHow" aria-label="Close">×</button>
     <h2>DOJO RULES</h2>
-    <p>Pick your fighter, lock in, pick a CPU (or Random), pick an arena. Best of three rounds, 60 seconds each. Highest health wins if time runs out. Mirror matches allowed.</p>
+    <p>Pick a fighter, a CPU and an arena. Best of three rounds, 60 seconds each. If time runs out, highest health takes the round.</p>
+    <h3>Controls</h3>
+    <table class="moves">
+      <tr><td>Move / jump / crouch</td><td><kbd>A</kbd> <kbd>D</kbd> · <kbd>W</kbd> · <kbd>S</kbd> (or arrows). Double-tap to dash.</td></tr>
+      <tr><td>Punch</td><td><kbd>L-CLICK</kbd> or <kbd>J</kbd></td></tr>
+      <tr><td>Kick</td><td><kbd>R-CLICK</kbd> or <kbd>K</kbd></td></tr>
+      <tr><td>Block</td><td>Hold <kbd>SPACE</kbd>. Hold <kbd>S</kbd> too for lows.</td></tr>
+      <tr><td>Special</td><td><kbd>E</kbd>, <kbd>L</kbd> or <kbd>MID-CLICK</kbd> when the meter is full. Hold to charge.</td></tr>
+    </table>
+    <h3>Move list</h3>
+    <table class="moves">
+      <tr><td>Jab › Straight › Uppercut</td><td>Punch ×3 (the uppercut launches)</td></tr>
+      <tr><td>Kick › Roundhouse</td><td>Kick ×2</td></tr>
+      <tr><td>Overhead</td><td>Toward + Punch. Beats crouch-blocking.</td></tr>
+      <tr><td>Anti-Air</td><td>Back + Punch. Launches jumpers.</td></tr>
+      <tr><td>Lunge Kick</td><td>Toward + Kick</td></tr>
+      <tr><td>Low Jab › Sweep</td><td>Down + Punch, Down + Kick</td></tr>
+      <tr><td>Dive Kick</td><td>In the air: Down + Kick. Must be blocked standing.</td></tr>
+      <tr><td>Throw</td><td>Block + Punch up close. Beats blocking.</td></tr>
+      <tr><td>Dash attack</td><td>Attack during a dash</td></tr>
+    </table>
+    <h3>Defence</h3>
     <ul>
-      <li><b>Move:</b> A / D or arrows. <b>Jump:</b> W / ↑ (hold a direction to jump over). <b>Crouch:</b> S / ↓. Double-tap left/right to dash.</li>
-      <li><b>Punch:</b> J (fast, short). <b>Kick:</b> K (slower, more reach). Hold ↓ for low attacks. Press in the air for jump attacks.</li>
-      <li><b>Block:</b> hold Space. Hold ↓ + Space for low attacks; stand-block jump-ins. Blocked hits do a little chip damage.</li>
-      <li><b>Special:</b> L when your meter is full. Meter fills by dealing and taking hits. Hold L while standing still to charge it, but you're wide open.</li>
-      <li><b>Pause:</b> Esc or P. On mobile, use the buttons under the arena.</li>
+      <li><b>Block</b> takes a little chip damage and drains your blue guard bar. If it empties, you're dizzy and wide open.</li>
+      <li><b>Parry</b>: tap block just before a hit lands. No chip, the attacker staggers and you get meter.</li>
+      <li>Chains and specials can be cancelled on hit or block. Combos scale damage down.</li>
     </ul>
-    <p class="tip">Whiffed attacks leave you open. The CPU punishes on Hard.</p>
   </div>
 </div>
 

@@ -27,33 +27,36 @@ const lineup=['bear','moon','diamond','main','whale','shiba','brain'].map(id=>F.
 let tf=0;
 function drawTitle(){
   tf++;
+  tc.setTransform(2,0,0,2,0,0); tc.imageSmoothingEnabled=false;
   DD.Arenas.draw(tc,'laneway',tf);
   tc.fillStyle='rgba(43,20,5,0.25)'; tc.fillRect(0,0,480,270);
   const n=lineup.length;
   lineup.forEach((s,i)=>{
     const x=60+i*60, y=232+(i===3?4:0), cv=DD.Sprites.get(s,'idle',((tf/10)|0)+i,false,false);
-    tc.save(); tc.translate(x,y); const sc=i===3?1.35:1.15; tc.scale((i<3?1:-1)*sc,sc); if(i===3) tc.scale(-1,1); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
+    const sc=(i===3?1.6:1.3)/DD.Sprites.RES, dir=i<=3?1:-1;
+    tc.save(); tc.translate(x,y); tc.scale(dir*sc,sc); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
   });
 }
 $$('.diff button').forEach(b=>{ b.classList.toggle('on',b.dataset.diff===st.diff); b.onclick=()=>{ st.diff=b.dataset.diff; try{localStorage.setItem('dd_diff',st.diff);}catch(e){} $$('.diff button').forEach(x=>x.classList.toggle('on',x===b)); Au.sfx('select'); }; });
 $('#startBtn').onclick=()=>{ Au.sfx('lock'); openSelect(0); };
+$('#quickBtn').onclick=()=>{ Au.sfx('lock'); const r=a=>a[Math.floor(Math.random()*a.length)]; st.p1=r(F); st.p2=r(F); st.randomCpu=false; st.arena=r(AR); startMatch(); };
 $('#howBtn').onclick=$('#helpBtn').onclick=()=>{ $('#howOv').hidden=false; if(st.fight) st.fight.paused=true; };
 $('#brandHome').onclick=e=>{ e.preventDefault(); quitToTitle(); };
 $('#backTitle').onclick=()=>quitToTitle();
 
 // ---------- select ----------
 const port = {}; // cached portrait urls
-function P(s,pose){ const k=s.id+(pose||''); return port[k]||(port[k]=DD.Sprites.portrait(s,4,pose||'idle')); }
-const PORT_SMALL = {}; function PS(s){ return PORT_SMALL[s.id]||(PORT_SMALL[s.id]=DD.Sprites.portrait(s,2)); }
+function P(s,pose){ const k=s.id+(pose||''); return port[k]||(port[k]=DD.Sprites.portrait(s,2,pose||'idle')); }
+const PORT_SMALL = {}; function PS(s){ return PORT_SMALL[s.id]||(PORT_SMALL[s.id]=DD.Sprites.portrait(s,1)); }
 
 function buildGrids(){
   const g=$('#fighterGrid'); g.innerHTML='';
   F.forEach((s,i)=>{ const b=document.createElement('button'); b.className='tile'; b.dataset.i=i; b.innerHTML=`<img src="${PS(s)}" alt=""><span class="nm">${s.name}</span>`;
-    b.onclick=()=>{ st.cursor=i; pick(i); }; b.onmouseenter=()=>{ st.cursor=i; hover(i); }; g.appendChild(b); });
-  const r=document.createElement('button'); r.className='tile random'; r.dataset.i='rand'; r.innerHTML=`<span class="qm">?</span><span class="nm">RANDOM CPU</span>`; r.onclick=()=>{ st.cursor=F.length; pick('rand'); }; g.appendChild(r);
+    b.onclick=()=>{ st.cursor=i; pick(i); }; b.ondblclick=()=>lockIn(); b.onmouseenter=()=>{ if(st.cursor!==i){ st.cursor=i; hover(i); } }; g.appendChild(b); });
+  const r=document.createElement('button'); r.className='tile random'; r.dataset.i='rand'; r.innerHTML=`<span class="qm">?</span><span class="nm">RANDOM CPU</span>`; r.onclick=()=>{ st.cursor=F.length; pick('rand'); }; r.ondblclick=()=>lockIn(); g.appendChild(r);
   const a=$('#arenaGrid'); a.innerHTML='';
   AR.forEach((ar,i)=>{ const b=document.createElement('button'); b.className='atile'; b.dataset.i=i; b.innerHTML=`<img src="${DD.Arenas.thumb(ar.id)}" alt=""><span class="nm">${ar.name.toUpperCase()}<small>${ar.sub}</small></span>`;
-    b.onclick=()=>{ st.cursor=i; pickArena(i); }; b.onmouseenter=()=>{ st.cursor=i; markCursor(); previewArena(i); }; a.appendChild(b); });
+    b.onclick=()=>{ st.cursor=i; pickArena(i); }; b.ondblclick=()=>lockIn(); b.onmouseenter=()=>{ st.cursor=i; markCursor(); }; a.appendChild(b); });
 }
 
 function openSelect(step){
@@ -76,7 +79,6 @@ function renderSelect(){
   setSide(1, st.p1);
   if(s===0){ $('#p1State').textContent='SELECTING'; setSide(2,null); $('#p2Up').textContent='UP NEXT'; }
   else { $('#p1State').textContent='LOCKED'; $('#p2Up').textContent = s===1?'SELECTING':'LOCKED'; setSide(2, st.p2, st.randomCpu&&s===1); }
-  if(s===2) previewArena(st.cursor);
   // badges
   $$('#fighterGrid .tile').forEach(t=>{ t.querySelectorAll('.badge').forEach(x=>x.remove()); t.classList.remove('sel');
     const i=+t.dataset.i; if(st.p1&&F[i]===st.p1 && s>0){ t.insertAdjacentHTML('afterbegin','<span class="badge">YOU</span>'); }
@@ -106,7 +108,6 @@ function pick(i){
   renderSelect();
 }
 function pickArena(i){ Au.sfx('select'); st.arena=AR[i]; renderSelect(); Au.playSong(AR[i].music,true); }
-function previewArena(i){ const a=AR[i]; if(!a) return; const s2=st.p2||null; }
 function markCursor(){
   const sel = st.step===2 ? '#arenaGrid .atile' : '#fighterGrid .tile';
   $$('.tile,.atile').forEach(t=>t.classList.remove('cursor'));
@@ -138,6 +139,9 @@ function endMatch(won,fight){
   $('#resTitle').textContent = won?'YOU WIN':'REKT';
   $('#resImg').src = P(w.spec,'win');
   $('#resLine').textContent = won ? `${fight.p[0].spec.name} takes the dojo. ${fight.p[0].spec.tag}.` : `${fight.p[1].spec.name} sent you back to the charts.`;
+  const s0=fight.stats[0];
+  $('#resStats').innerHTML=[['HITS',s0.hits],['BEST COMBO',s0.maxCombo],['DAMAGE',Math.round(s0.dmg)],['BLOCKS',s0.blocks],['PARRIES',s0.parries],['ROUNDS',fight.p[0].wins+'-'+fight.p[1].wins]]
+    .map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
   setTimeout(()=>{ $('#resultOv').hidden=false; },500);
 }
 function pauseGame(on){ if(!st.fight||st.fight.over) return; st.fight.paused=on; $('#pauseOv').hidden=!on; if(on) Au.stop(); else Au.playSong(st.fight.arena.music,true); }
@@ -158,7 +162,7 @@ $('#howOv').addEventListener('click',e=>{ if(e.target.id==='howOv'){ $('#howOv')
 // ---------- input ----------
 const input={left:false,right:false,up:false,down:false,p:false,k:false,block:false,sp:false};
 function resetInput(){ for(const k in input) input[k]=false; }
-const KEYMAP={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',KeyJ:'p',KeyK:'k',Space:'block',KeyL:'sp'};
+const KEYMAP={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',KeyJ:'p',KeyK:'k',Space:'block',ShiftLeft:'block',KeyL:'sp',KeyE:'sp'};
 document.addEventListener('keydown',e=>{
   if(!$('#howOv').hidden){ if(e.code==='Escape'){ $('#howOv').hidden=true; if(st.fight&&$('#pauseOv').hidden) st.fight.paused=false; } return; }
   if(st.screen==='game'){
@@ -170,6 +174,13 @@ document.addEventListener('keydown',e=>{
   if(st.screen==='title' && (e.code==='Enter'||e.code==='Space')){ e.preventDefault(); $('#startBtn').click(); }
 });
 document.addEventListener('keyup',e=>{ const k=KEYMAP[e.code]; if(k) input[k]=false; });
+// mouse: left = punch, right = kick, middle = special (only while fighting, not on overlays/buttons)
+const MOUSE=['p','sp','k'];
+function mouseOk(e){ return st.screen==='game' && st.fight && !st.fight.paused && !e.target.closest('button,.overlay,.touch,a'); }
+document.addEventListener('mousedown',e=>{ if(!mouseOk(e)) return; const k=MOUSE[e.button]; if(k){ input[k]=true; e.preventDefault(); } });
+document.addEventListener('mouseup',e=>{ const k=MOUSE[e.button]; if(k) input[k]=false; });
+document.addEventListener('contextmenu',e=>{ if(st.screen==='game' && !e.target.closest('.overlay')) e.preventDefault(); });
+document.addEventListener('auxclick',e=>{ if(st.screen==='game') e.preventDefault(); });
 window.addEventListener('blur',()=>{ resetInput(); if(st.fight&&st.screen==='game'&&!st.fight.over) pauseGame(true); });
 
 function selectKeys(e){

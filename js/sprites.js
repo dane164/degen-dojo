@@ -1,6 +1,6 @@
 /* DEGEN DOJO — procedural pixel fighter sprites */
 (function(){
-const W = 96, H = 104, OX = 48, OY = 98; // sprite canvas + foot origin
+const W = 96, H = 104, OX = 48, OY = 98, RES = 2; // logical sprite box + foot origin; RES = backing resolution
 const OUT = '#1a0b02';
 const cache = new Map();
 
@@ -85,6 +85,33 @@ function pose(name, f){
     case 'grab': return P({hip:[1,-24],neck:[5,-44],head:[6,-53],
         fK:[8,-12],fF:[11,0], bK:[-5,-12],bF:[-10,0],
         fS:[7,-42],fE:[15,-38],fH:[21,-34], bS:[3,-42],bE:[13,-44],bH:[20,-40]});
+    case 'upper': { const ext=f===1;
+      return P({hip:[1,-24],neck:[4,-46],head:[5,-55],
+        fK:[8,-13],fF:[11,0], bK:[-5,-12],bF:[-10,0],
+        fS:[6,-44],fE:ext?[11,-52]:[12,-36],fH:ext?[13,-66]:[14,-30], bS:[2,-44],bE:[0,-36],bH:[5,-40]}); }
+    case 'heavy': { const ext=f===1;
+      return P({hip:[2,-24],neck:ext?[8,-42]:[-1,-45],head:ext?[10,-50]:[-2,-54],
+        fK:[10,-12],fF:[14,0], bK:[-5,-11],bF:[-11,0],
+        fS:ext?[9,-40]:[1,-43],fE:ext?[18,-46]:[-2,-55],fH:ext?[28,-36]:[4,-62], bS:ext?[5,-40]:[-3,-43],bE:[-4,-34],bH:[0,-30]}); }
+    case 'round': { const ext=f===1;
+      return P({hip:[0,-25],neck:[-6,-43],head:[-8,-51],
+        fK:ext?[14,-38]:[8,-28],fF:ext?[31,-47]:[16,-24], bK:[-3,-12],bF:[-4,0],
+        fS:[-4,-41],fE:[-12,-44],fH:[-18,-40], bS:[-7,-41],bE:[2,-46],bH:[8,-44]}); }
+    case 'lunge': { const ext=f===1;
+      return P({hip:[3,-22],neck:[9,-40],head:[12,-48],
+        fK:ext?[16,-20]:[10,-18],fF:ext?[31,-18]:[14,-10], bK:[-6,-11],bF:[-15,0],
+        fS:[10,-38],fE:[5,-31],fH:[0,-28], bS:[7,-38],bE:[12,-32],bH:[16,-36]}); }
+    case 'dive': return P({hip:[0,-30],neck:[-5,-49],head:[-6,-58],
+        fK:[9,-22],fF:[20,-8], bK:[3,-24],bF:[11,-11],
+        fS:[-2,-47],fE:[-9,-50],fH:[-14,-56], bS:[-5,-47],bE:[2,-52],bH:[7,-56]});
+    case 'dizzy': { const sw=[-2,0,2,0][f%4];
+      return P({hip:[sw,-23],neck:[sw*2,-43],head:[sw*3,-51],
+        fK:[6,-12],fF:[8,0], bK:[-6,-12],bF:[-9,0],
+        fS:[sw*2+2,-41],fE:[8,-31],fH:[6,-24], bS:[sw*2-2,-41],bE:[-6,-31],bH:[-5,-24]}); }
+    case 'throw': { const ext=f===1;
+      return P({hip:[0,-24],neck:ext?[-6,-43]:[5,-44],head:ext?[-8,-52]:[6,-53],
+        fK:[7,-12],fF:[10,0], bK:[-6,-12],bF:[-11,0],
+        fS:ext?[-3,-42]:[7,-42],fE:ext?[-12,-50]:[15,-38],fH:ext?[-18,-60]:[21,-36], bS:ext?[-6,-42]:[3,-42],bE:ext?[-14,-46]:[13,-44],bH:ext?[-20,-54]:[20,-40]}); }
     default: // idle
       return P({hip:[0,-24+bob],neck:[1,-44+bob],head:[2,-53+bob],
         fK:[6,-12],fF:[9,0], bK:[-5,-12],bF:[-9,0],
@@ -93,13 +120,15 @@ function pose(name, f){
 }
 
 // ---------- primitives ----------
-function px(c,x,y,w,h,col){ c.fillStyle=col; c.fillRect(Math.round(OX+x),Math.round(OY+y),w,h); }
+const hp=v=>Math.round(v*2)/2;
+function px(c,x,y,w,h,col){ c.fillStyle=col; c.fillRect(hp(OX+x),hp(OY+y),w,h); }
 function line(c,a,b,w,col){
   c.fillStyle=col;
   const dx=b[0]-a[0], dy=b[1]-a[1], n=Math.max(1,Math.ceil(Math.hypot(dx,dy)));
-  for(let i=0;i<=n;i++){
-    const x=a[0]+dx*i/n, y=a[1]+dy*i/n;
-    c.fillRect(Math.round(OX+x-w/2),Math.round(OY+y-w/2),w,w);
+  const m=n*2;
+  for(let i=0;i<=m;i++){
+    const x=a[0]+dx*i/m, y=a[1]+dy*i/m;
+    c.fillRect(hp(OX+x-w/2),hp(OY+y-w/2),w,w);
   }
 }
 function lerp(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]; }
@@ -248,12 +277,21 @@ function drawBall(c,s,f){ // Loaf Mode
 }
 
 function outline(c, alt){
-  const img=c.getImageData(0,0,W,H), d=img.data, o=new Uint8ClampedArray(d);
+  const BW=W*RES, BH=H*RES;
+  const img=c.getImageData(0,0,BW,BH), d=img.data, o=new Uint8ClampedArray(d);
   const oc=[0x1a,0x0b,0x02];
-  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-    const i=(y*W+x)*4;
-    if(d[i+3]) continue;
-    const n = (x>0&&d[i-4+3])||(x<W-1&&d[i+4+3])||(y>0&&d[i-W*4+3])||(y<H-1&&d[i+W*4+3]);
+  const A=(x,y)=> x>=0&&y>=0&&x<BW&&y<BH ? d[(y*BW+x)*4+3] : 0;
+  for(let y=0;y<BH;y++) for(let x=0;x<BW;x++){
+    const i=(y*BW+x)*4;
+    if(d[i+3]){
+      // soft volume: light from top-left, shade bottom-right edges
+      const top=!A(x,y-2)||!A(x-2,y), bot=!A(x,y+3)||!A(x+3,y);
+      const k = top? 1.18 : bot? 0.74 : 1;
+      if(k!==1){ o[i]=Math.min(255,d[i]*k); o[i+1]=Math.min(255,d[i+1]*k); o[i+2]=Math.min(255,d[i+2]*k); }
+      continue;
+    }
+    // 2px outline at backing res (= 1 logical px), rounded corners
+    let n=0; for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){ if(Math.abs(dx)+Math.abs(dy)>3) continue; if(A(x+dx,y+dy)){ n=1; dy=3; break; } }
     if(n){ o[i]=oc[0];o[i+1]=oc[1];o[i+2]=oc[2];o[i+3]=255; }
   }
   if(alt){ // mirror palette: rotate channels on non-outline pixels
@@ -273,16 +311,17 @@ function get(spec, poseName, frame, alt, white){
   let cv=cache.get(key);
   if(cv) return cv;
   if(white){ cv=flash(get(spec,poseName,frame,alt,false)); cache.set(key,cv); return cv; }
-  const base=document.createElement('canvas'); base.width=W; base.height=H;
-  const c=base.getContext('2d');
+  const base=document.createElement('canvas'); base.width=W*RES; base.height=H*RES;
+  const c=base.getContext('2d'); c.scale(RES,RES);
   drawFighterRaw(c,spec,poseName,frame%8);
+  c.setTransform(1,0,0,1,0,0);
   outline(c,alt);
   cv=base;
   if(spec.size && spec.size!==1){
-    const s=spec.size, sc=document.createElement('canvas'); sc.width=Math.round(W*s); sc.height=Math.round(H*s);
+    const s=spec.size, sc=document.createElement('canvas'); sc.width=Math.round(W*RES*s); sc.height=Math.round(H*RES*s);
     const x=sc.getContext('2d'); x.imageSmoothingEnabled=false; x.drawImage(base,0,0,sc.width,sc.height); cv=sc;
   }
-  cv._ox = Math.round(OX*(spec.size||1)); cv._oy = Math.round(OY*(spec.size||1));
+  cv._ox = Math.round(OX*RES*(spec.size||1)); cv._oy = Math.round(OY*RES*(spec.size||1));
   cache.set(key,cv);
   return cv;
 }
@@ -295,5 +334,5 @@ function portrait(spec, scale, poseName, alt){
   return out.toDataURL();
 }
 
-DD.Sprites = { get, portrait, shade, W, H };
+DD.Sprites = { get, portrait, shade, W, H, RES };
 })();

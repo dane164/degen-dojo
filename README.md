@@ -21,10 +21,12 @@ Deploy as-is to Vercel, Netlify, GitHub Pages or Cloudflare Pages.
 | `css/style.css` | Orange retro UI. Theme tokens are at the top (`--or`, `--cream`, `--br`, etc.). |
 
 ## Controls
-A/D move · W jump · S crouch · double-tap to dash · J punch · K kick · Space block (S+Space low block) · L special (hold to charge) · Esc pause. On mobile you get on-screen buttons.
+A/D move, W jump, S crouch, double-tap to dash. Left-click (or J) punches, right-click (or K) kicks. Space blocks, and tapping it just before a hit parries. Space + left-click throws. E, L or middle-click fires the special (hold to charge). Esc pauses. Mobile gets on-screen buttons.
+
+Move list: punch ×3 chain (jab › straight › launcher uppercut), kick ×2 (› roundhouse), toward+P overhead, back+P anti-air, toward+K lunge kick, down+P/K lows and sweep, air down+K dive kick, block+P throw, attack out of a dash. Blocking drains a guard bar; when it empties you go dizzy.
 
 ## Tuning cheatsheet
-- Damage and frame data: `ATK` table at the top of `game.js`
+- Damage, frame data and chain routes: `ATK` table at the top of `game.js`
 - Fighter speed, power and defence: `stats` in `data.js`
 - Rounds needed / round time: `WINS_NEEDED`, `ROUND_TIME` in `game.js`
 - CPU difficulty: `LEVELS` in `game.js`

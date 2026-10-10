@@ -84,7 +84,8 @@ function sfx(name){
     case 'whoosh': nz(t,0.08,0.18,3000,d); break;
     case 'hit': nz(t,0.09,0.5,400,d); tone('square',180,t,0.08,0.3,d,60); break;
     case 'heavy': nz(t,0.16,0.6,200,d); tone('square',120,t,0.16,0.4,d,40); break;
-    case 'block': tone('square',1200,t,0.04,0.2,d); nz(t,0.04,0.2,4000,d); break;
+    case 'block': tone('triangle',900,t,0.06,0.3,d,600); nz(t,0.05,0.25,5000,d); break;
+    case 'parry': tone('square',1568,t,0.08,0.25,d); tone('square',2093,t+0.06,0.18,0.25,d); nz(t,0.06,0.2,6000,d); break;
     case 'jump': tone('square',300,t,0.12,0.15,d,700); break;
     case 'land': nz(t,0.05,0.15,300,d); break;
     case 'special': tone('sawtooth',200,t,0.4,0.25,d,1400); tone('square',400,t+0.05,0.35,0.15,d,2000); break;
