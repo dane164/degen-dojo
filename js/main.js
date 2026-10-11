@@ -224,7 +224,11 @@ async function ensureProfile(){
 }
 async function refreshOnlineLine(){
   if(!ON.available()) return;
-  try{ const s=await ON.stats(); $('#onlineLine').textContent=`${s.online} ONLINE · ${s.queue} IN QUEUE · ${s.players} RANKED PLAYERS`; }catch(e){ $('#onlineLine').textContent=''; }
+  try{ const s=await ON.stats(), parts=[];   // only brag when the numbers are worth showing
+    if(s.queue>0) parts.push(`${s.queue} IN QUEUE · JUMP IN`);
+    if(s.online>=3) parts.push(`${s.online} ONLINE`);
+    if(s.players>=10) parts.push(`${s.players} RANKED PLAYERS`);
+    $('#onlineLine').textContent=parts.join(' · '); }catch(e){ $('#onlineLine').textContent=''; }
 }
 
 // ---------- online: leaderboard ----------
