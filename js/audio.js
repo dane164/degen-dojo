@@ -7,8 +7,8 @@ try{ muted = localStorage.getItem('dd_muted')==='1'; }catch(e){}
 function init(){
   if(ac) { if(ac.state==='suspended') ac.resume(); return; }
   const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
-  ac=new AC(); master=ac.createGain(); master.gain.value=muted?0:0.55; master.connect(ac.destination);
-  musicGain=ac.createGain(); musicGain.gain.value=0.32; musicGain.connect(master);
+  ac=new AC(); master=ac.createGain(); master.gain.value=0.55; master.connect(ac.destination);
+  musicGain=ac.createGain(); musicGain.gain.value=muted?0:0.32; musicGain.connect(master);
   sfxGain=ac.createGain(); sfxGain.gain.value=0.7; sfxGain.connect(master);
 }
 const mtof=m=>440*Math.pow(2,(m-69)/12);
@@ -80,8 +80,12 @@ document.addEventListener('visibilitychange',()=>{ if(!ac) return;
 
 const TITLE_SONG={bpm:138, root:45, mode:'dorian', seed:420};
 
+const SFX_ALIAS={ sp_crystalShell:'sp_armorCounter', sp_panicSell:'sp_teleportShuriken', sp_moonShot:'sp_rocketUppercut', sp_capitulation:'sp_groundSlam', sp_stampede:'sp_charge',
+  sp_tsunami:'sp_wave', sp_gasSpike:'sp_drainMeter', sp_bigBrainBeam:'sp_bigBeam', sp_copiumHuff:'sp_heal', sp_scripted:'sp_clones', sp_thumbnailFace:'sp_feint', sp_touchGrass:'sp_zone',
+  sp_reverseCard:'sp_reflect', sp_plotArmour:'sp_plotArmor', sp_rollback:'sp_rewind', sp_zoomies:'sp_multiDash', sp_loafRoll:'sp_invulnRoll', sp_bodySlam:'sp_commandGrab', sp_infiniteScroll:'sp_barrage', splash:'sp_wave' };
 function sfx(name){
-  if(!ac||muted) return; const t=ac.currentTime, d=sfxGain;
+  name = SFX_ALIAS[name]||name;
+  if(!ac) return; const t=ac.currentTime, d=sfxGain;
   switch(name){
     case 'select': tone('square',880,t,0.06,0.2,d); tone('square',1320,t+0.05,0.08,0.2,d); break;
     case 'move': tone('square',660,t,0.04,0.12,d); break;
@@ -116,6 +120,10 @@ function sfx(name){
     case 'sp_teleportShuriken': case 'sp_feint': tone('sine',1800,t,0.2,0.25,d,200); nz(t,0.15,0.2,6000,d); break;
     case 'sp_drainMeter': nz(t,0.8,0.35,3000,d); tone('sawtooth',200,t,0.5,0.12,d,80); break;
     case 'sp_barrage': for(let i=0;i<8;i++){ tone('square',1200+(i%3)*200,t+i*0.04,0.03,0.12,d); } break;
+    case 'sp_candles': for(let i=0;i<3;i++){ tone('square',330*(1+i*0.5),t+i*0.2,0.15,0.3,d,660*(1+i*0.5)); nz(t+i*0.2,0.12,0.3,500,d); } break;
+    case 'sp_flurry': for(let i=0;i<9;i++){ nz(t+i*0.075,0.03,0.35,3500,d); tone('square',900+(i%3)*240,t+i*0.075,0.03,0.15,d); } break;
+    case 'sp_timeStop': tone('sine',880,t,1.0,0.3,d,110); tone('triangle',440,t+0.05,1.0,0.2,d,55); [0,0.25,0.5].forEach(o=>tone('square',1760,t+o,0.04,0.2,d)); break;
+    case 'sp_ratioDrop': for(let i=0;i<3;i++){ tone('sawtooth',1200,t+i*0.27,0.25,0.18,d,150); } nz(t,0.5,0.2,1200,d); break;
     case 'sp_rugPull': tone('sawtooth',600,t,0.5,0.3,d,40); nz(t,0.4,0.4,300,d); break;
     case 'announce': tone('square',196,t,0.18,0.18,d); tone('square',294,t+0.02,0.18,0.12,d); nz(t,0.05,0.15,3000,d); break;
     case 'win': [523,659,784,1046].forEach((f,i)=>tone('square',f,t+i*0.12,0.2,0.25,d)); break;
@@ -131,7 +139,7 @@ function pickVoice(){ if(!('speechSynthesis' in window)) return null; const vs=s
 if('speechSynthesis' in window){ voice=pickVoice(); speechSynthesis.onvoiceschanged=()=>{ voice=pickVoice(); }; }
 const SPOKEN={ 'Round 1':'Round one!', 'Round 2':'Round two!', 'Round 3':'Final round!', 'Round 4':'Round four!', 'Fight':'Fight!', 'K O':'K. O.!', 'Perfect':'Perfect!', 'Time':'Time!' };
 function say(text){
-  if(muted||!('speechSynthesis' in window)||document.hidden) return;
+  if(!('speechSynthesis' in window)||document.hidden) return;
   try{
     speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(SPOKEN[text]||text);
@@ -142,7 +150,7 @@ function say(text){
   }catch(e){}
 }
 
-function setMuted(m){ muted=m; try{ localStorage.setItem('dd_muted',m?'1':'0'); }catch(e){} if(master) master.gain.value=m?0:0.55; if(m&&'speechSynthesis' in window) speechSynthesis.cancel(); }
+function setMuted(m){ muted=m; try{ localStorage.setItem('dd_muted',m?'1':'0'); }catch(e){} if(musicGain){ musicGain.gain.cancelScheduledValues(ac.currentTime); musicGain.gain.setTargetAtTime(m?0:0.32, ac.currentTime, 0.05); } } // mutes music only; fight SFX + announcer keep playing
 
 DD.Audio = { init, playSong, stop, sfx, say, setMuted, isMuted:()=>muted, TITLE_SONG };
 })();

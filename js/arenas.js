@@ -28,7 +28,7 @@ function txt(c,s,x,y,col,size,align){ c.fillStyle=col; c.font=(size||8)+'px "Pre
 function texture(c,x,y,w,h,amt,scale,seed,octaves){
   const CW=c.canvas.width, CH=c.canvas.height; x=Math.max(0,x|0); y=Math.max(0,y|0); w=Math.min(CW-x,w|0); h=Math.min(CH-y,h|0); if(w<=0||h<=0) return;
   const img=c.getImageData(x,y,w,h), d=img.data;
-  for(let j=0;j<h;j++) for(let i=0;i<w;i++){ const k=(j*w+i)*4; if(!d[k+3]) continue; const n=1+(fbm((x+i)/scale,(y+j)/scale,seed,octaves||3)-0.5)*amt;
+  for(let j=0;j<h;j++) for(let i=0;i<w;i++){ const k=(j*w+i)*4; if(!d[k+3]) continue; const n=1+(fbm((x+i)/scale,(y+j)/scale,seed,octaves||3)-0.5)*amt*0.5;
     d[k]=Math.min(255,d[k]*n); d[k+1]=Math.min(255,d[k+1]*n); d[k+2]=Math.min(255,d[k+2]*n); }
   c.putImageData(img,x,y);
 }
@@ -79,6 +79,41 @@ function contact(c){ c.fillStyle=vgrad(c,FLOOR,FLOOR+8,['rgba(0,0,0,0.35)','rgba
 function person(c,x,y,s,col,head){ R(c,x-2*s,y-9*s,4*s,9*s,col); circ(c,x,y-11*s,2*s,head||col); }
 
 // ---------- arenas ----------
+// ---------- painterly 16-bit primitives (KOF / SF3 stage style) ----------
+// canopy: leaf clumps packed in an ellipse, rendered in passes (silhouette, shadow, body, lit caps, sparkles)
+// so it reads as one mass of foliage lit from the top-left instead of a pile of balls
+function canopy(c,cx,cy,rx,ry,seed,pal,clumpR){
+  const r=rnd(seed), cr=clumpR||Math.max(6,Math.min(rx,ry)*0.3), n=Math.round(rx*ry/(cr*cr)*2.2)+8, pts=[];
+  for(let i=0;i<n;i++){ const a=r()*Math.PI*2, d=Math.pow(r(),0.6); pts.push([cx+Math.cos(a)*d*rx, cy+Math.sin(a)*d*ry, cr*(0.6+r()*0.55), r()]); }
+  pts.sort((p,q)=>q[1]-p[1]);
+  const lit=(x,y)=>Math.max(0,Math.min(1,0.55-(y-cy)/ry*0.55-(x-cx)/rx*0.3));
+  const blob=(x,y,rr,col)=>{ c.fillStyle=col; c.beginPath(); c.ellipse(x,y,rr*1.15,rr*0.85,0,0,7); c.fill(); };
+  for(const [x,y,rr] of pts) blob(x,y+1,rr+1.5,pal[0]);          // silhouette rim
+  for(const [x,y,rr] of pts) blob(x,y,rr,pal[1]);                 // shadow mass
+  for(const [x,y,rr] of pts){ const l=lit(x,y); if(l>0.12) blob(x-rr*0.1,y-rr*0.22,rr*0.78,pal[2]); }
+  for(const [x,y,rr] of pts){ const l=lit(x,y); if(l>0.38) blob(x-rr*0.25,y-rr*0.4,rr*0.48,pal[3]); }
+  for(const [x,y,rr,k] of pts){ const l=lit(x,y); if(l>0.6 && k<0.6){ R(c,x-rr*0.45,y-rr*0.55,2,1,pal[4]); R(c,x-rr*0.2,y-rr*0.62,1,1,pal[4]); } }
+}
+function trunk(c,x,y0,y1,w,pal){ poly(c,[[x-w*0.6,y1],[x-w*0.4,y0],[x+w*0.4,y0],[x+w*0.7,y1]],pal[0]); poly(c,[[x-w*0.45,y1],[x-w*0.3,y0],[x,y0],[x-w*0.05,y1]],pal[1]); R(c,x-w*0.3,y0,w*0.15,y1-y0,pal[2]); }
+// angular rock slab: lit top facet, shaded front, dark rim
+function rock(c,x,y,w,h,seed,pal){
+  const r=rnd(seed), j=()=> (r()-0.5)*w*0.18;
+  const top=[[x-w/2+j(),y-h*0.35+j()*0.3],[x-w*0.2+j(),y-h/2],[x+w*0.25+j(),y-h/2+j()*0.2],[x+w/2+j(),y-h*0.3]];
+  const bot=[[x+w/2,y+h*0.1],[x+w*0.4,y+h/2],[x-w*0.45,y+h/2],[x-w/2,y+h*0.05]];
+  poly(c,top.concat(bot).map(([a,b])=>[a+(a<x?-1:1),b+(b<y?-1:1)]),pal[0]);
+  poly(c,top.concat(bot),pal[1]);
+  poly(c,top.concat([[x+w/2-2,y-h*0.05],[x-w/2+2,y-h*0.1]]),pal[2]);
+  poly(c,[top[0],top[1],[x-w*0.05,y-h*0.32],[x-w/2+3,y-h*0.22]],pal[3]);
+  R(c,top[1][0],top[1][1],w*0.3,1,pal[4]);
+  c.strokeStyle=pal[0]; c.lineWidth=1; c.beginPath(); c.moveTo(x+w*0.1,y-h*0.1); c.lineTo(x+w*0.18,y+h*0.25); c.stroke();
+}
+// distant palace / mansion in atmospheric haze
+function palace(c,x,base,w,h,col,lit,dk,win){
+  R(c,x,base-h,w,h,col); R(c,x,base-h,w,3,lit); R(c,x+w-3,base-h,3,h,dk);
+  for(let fy=base-h+8;fy<base-6;fy+=12) for(let fx=x+5;fx<x+w-6;fx+=9){ R(c,fx,fy,4,7,dk); R(c,fx,fy,4,2,win); }
+  R(c,x-2,base-h-4,w+4,4,dk); for(let fx=x;fx<x+w;fx+=6) R(c,fx,base-h-7,3,3,col);
+}
+
 const DRAW = {
   floor(c){ // Trading Floor
     c.fillStyle=vgrad(c,0,FLOOR,['#120801','#2a1203','#3d1b06']); c.fillRect(0,0,AW,FLOOR);
@@ -138,6 +173,9 @@ const DRAW = {
     // ground
     c.fillStyle=vgrad(c,FLOOR,AH,['#9a9aa8','#5a5a66']); c.fillRect(0,FLOOR,AW,AH-FLOOR);
     const rr=rnd(9); for(let i=0;i<16;i++){ const x=rr()*AW, y=FLOOR+4+rr()*32, w=6+rr()*18; c.fillStyle='#6d6d7a'; c.beginPath(); c.ellipse(x,y,w,w*0.25,0,0,7); c.fill(); c.fillStyle='#b8b8c6'; c.beginPath(); c.ellipse(x,y+1,w*0.8,w*0.14,0,0,Math.PI); c.fill(); }
+    { const mp=['#1a1a24','#5a5a6a','#9a9aaa','#c8c8d6','#f0f0ff'], r2=rnd(91); // moon boulders, KOF-style facets
+      for(const [x,y,w,h] of [[22,FLOOR-6,40,22],[60,FLOOR-2,24,12],[440,FLOOR-8,50,26],[404,FLOOR-2,22,10],[170,FLOOR-1,16,7],[300,FLOOR-1,18,8]]) rock(c,x,y,w,h,(x*7)|0,mp);
+      for(let i=0;i<10;i++) rock(c,r2()*AW,FLOOR+10+r2()*26,14+r2()*20,6+r2()*6,200+i,mp); }
     texture(c,0,FLOOR,AW,AH-FLOOR,0.3,4,5); contact(c); vignette(c,0.35);
   },
   bazaar(c){
@@ -189,6 +227,10 @@ const DRAW = {
     c.fillStyle=vgrad(c,FLOOR,AH,['#2a0a04','#0a0200']); c.fillRect(0,FLOOR,AW,AH-FLOOR);
     texture(c,0,FLOOR,AW,AH-FLOOR,0.6,4,3);
     const r=rnd(12); for(let i=0;i<9;i++){ let x=r()*AW, y=FLOOR+2; c.strokeStyle='#ff5a00'; c.lineWidth=1; c.beginPath(); c.moveTo(x,y); for(let k=0;k<6;k++){ x+=(r()-0.5)*16; y+=4+r()*3; c.lineTo(x,y); } c.stroke(); }
+    { const vp=['#0a0200','#3a1208','#6a2810','#a8441a','#ffb060'], r2=rnd(55); // basalt slabs with lava-lit edges
+      for(const [x,y,w,h] of [[24,FLOOR-8,48,26],[456,FLOOR-10,56,30],[90,FLOOR-2,26,12],[392,FLOOR-3,30,14]]) rock(c,x,y,w,h,(x*3)|0,vp);
+      for(let i=0;i<12;i++) rock(c,r2()*AW,FLOOR+8+r2()*28,16+r2()*24,7+r2()*6,300+i,vp);
+      for(let i=0;i<5;i++){ const x=40+r2()*400, y=FLOOR+14+r2()*20; c.fillStyle='#ff5a00'; c.beginPath(); c.ellipse(x,y,10+r2()*10,2.5,0,0,7); c.fill(); c.fillStyle='#ffd23f'; c.beginPath(); c.ellipse(x,y,5,1,0,0,7); c.fill(); glow(c,x,y,22,'rgba(255,90,0,0.25)'); } }
     R(c,0,FLOOR,AW,1,'#ff6a00'); glow(c,240,FLOOR,200,'rgba(255,70,0,0.15)'); contact(c); vignette(c,0.5);
   },
   dock(c){
@@ -340,35 +382,45 @@ const DRAW = {
     const r=rnd(44); for(let i=0;i<120;i++){ const x=r()*AW, y=FLOOR+r()*(AH-FLOOR), k=(r()*4)|0; if(k===0) poly(c,[[x,y-3],[x+3,y+2],[x-3,y+2]],'#ff2ec4'); else if(k===1) circ(c,x,y,1.8,'#3bff8a'); else if(k===2) R(c,x,y,4,1,'#ffd23f'); else R(c,x,y,1,4,'#5ad1ff'); }
     reflect(c,FLOOR,40,0.12); contact(c); vignette(c,0.45);
   },
-  park(c){
-    c.fillStyle=vgrad(c,0,FLOOR,['#4aa0ff','#7cc0ff','#b8deff','#e4f4ff']); c.fillRect(0,0,AW,FLOOR);
-    glow(c,80,44,70,'rgba(255,250,200,0.9)'); circ(c,80,44,15,'#fffbe0');
-    cloud(c,140,40,90,'#ffffff','#e6f0ff','#b8cce8',81); cloud(c,300,26,120,'#ffffff','#e6f0ff','#b8cce8',82); cloud(c,410,64,60,'#ffffff','#e6f0ff','#b8cce8',83); cloud(c,20,74,50,'#ffffff','#e6f0ff','#b8cce8',84);
-    // distant city (Melbourne-ish) in haze
-    skyline(c,91,150,'#9ab8d8',10,60,null,0,{x0:240,x1:480,minW:10,varW:14});
-    R(c,330,70,6,80,'#8aaacb'); poly(c,[[328,70],[333,52],[338,70]],'#8aaacb');
-    // hills
-    ridge(c,170,36,31,'#8fd36a','#78bb56',4);
-    ridge(c,186,22,32,'#6cbc48','#58a43a',3);
-    // trees with layered foliage
-    const r=rnd(31);
-    for(let i=0;i<8;i++){ const x=10+i*62+r()*16, s=0.8+r()*0.5, ty=154+r()*10;
-      R(c,x-3*s,ty,6*s,44,'#5a3418'); R(c,x-3*s,ty,2*s,44,'#7a4a22');
-      for(const [dx,dy,rr,col] of [[0,-6,22,'#1f5a1e'],[-14,2,16,'#1f5a1e'],[14,2,16,'#1f5a1e'],[-2,-10,17,'#2f7d2a'],[-12,-2,12,'#2f7d2a'],[10,-4,13,'#2f7d2a'],[-6,-16,10,'#46a33a'],[6,-12,8,'#58b84a'],[-10,-8,6,'#6fd05a']]) circ(c,x+dx*s,ty+dy*s,rr*s,col);
-    }
-    texture(c,0,120,AW,90,0.25,3,31);
-    // pond with ducks
-    c.fillStyle='#4a90d8'; c.beginPath(); c.ellipse(390,212,62,10,0,0,7); c.fill(); c.fillStyle='#9ad0ff'; c.beginPath(); c.ellipse(380,210,40,4,0,0,7); c.fill();
-    for(const x of [370,392]){ R(c,x,206,6,4,'#ffffff'); R(c,x+4,203,3,3,'#ffffff'); R(c,x+7,204,2,1,'#ff9a00'); }
-    // path, bench, sign, picnic
-    poly(c,[[200,232],[280,232],[262,196],[226,196]],'#d8c8a0');
-    R(c,60,198,52,4,'#8a5a2b'); R(c,60,190,52,3,'#8a5a2b'); R(c,64,202,3,12,'#4a3018'); R(c,105,202,3,12,'#4a3018');
-    R(c,300,206,2,26,'#4a3018'); R(c,286,196,30,12,'#2f7d2a'); txt(c,'OUTSIDE',301,200,'#fff',4,'center');
-    R(c,140,214,36,12,'#e0262d'); for(let i=0;i<4;i++) R(c,140+i*9,214,4,12,'#ffffff');
-    c.fillStyle=vgrad(c,FLOOR,AH,['#5cb83e','#2f7a1e']); c.fillRect(0,FLOOR,AW,AH-FLOOR);
-    const r2=rnd(77); for(let i=0;i<500;i++){ const x=r2()*AW, y=FLOOR+r2()*38; R(c,x,y-2,1,3,r2()<0.5?'#2f7a1e':'#7ad05a'); }
-    for(let i=0;i<20;i++){ const x=r2()*AW, y=FLOOR+6+r2()*30; circ(c,x,y,1.3,['#fff','#ffd23f','#ff9ad5'][i%3]); }
-    contact(c); vignette(c,0.15);
+  park(c){ // Touch Grass Park: SF3/KOF-style pond garden
+    c.fillStyle=vgrad(c,0,170,['#2a5cc8','#3f7ee0','#6aa6f0','#a8cff8']); c.fillRect(0,0,AW,170);
+    for(const [x,y,w] of [[60,28,70],[250,16,110],[400,40,60]]){ const r=rnd(x); for(let i=0;i<6;i++) circ(c,x+i*w/6,y+r()*6,6+r()*8,'#d8e8ff'); R(c,x-4,y+4,w+8,5,'#d8e8ff'); for(let i=0;i<6;i++) circ(c,x+i*w/6-2,y-3+r()*4,4+r()*5,'#ffffff'); }
+    // hazy palace on the hill
+    const hz='#8e88c8', hl='#b4b0e4', hd='#6a64a8', hw='#d8d4ff';
+    palace(c,150,128,120,34,hz,hl,hd,hw); palace(c,226,122,60,40,hz,hl,hd,hw);
+    R(c,312,58,26,70,hz); R(c,312,58,26,3,hl); R(c,334,58,4,70,hd); poly(c,[[308,58],[325,36],[342,58]],hd); R(c,323,26,4,12,hd); circ(c,325,46,6,hl);
+    for(let fy=66;fy<124;fy+=10) R(c,317,fy,4,6,hd), R(c,327,fy,4,6,hd);
+    palace(c,350,116,40,22,hz,hl,hd,hw);
+    c.fillStyle='rgba(170,200,255,0.35)'; c.fillRect(0,96,AW,40);
+    // far tree line
+    canopy(c,90,128,120,22,11,['#1a3d4a','#2a5a5a','#3e7a62','#5a9a6a','#7ab878'],9);
+    canopy(c,420,124,110,24,12,['#1a3d4a','#2a5a5a','#3e7a62','#5a9a6a','#7ab878'],9);
+    // stone bridge over the pond
+    c.fillStyle='#b8b0a0'; c.beginPath(); c.moveTo(150,170); c.quadraticCurveTo(205,140,260,170); c.lineTo(260,176); c.lineTo(150,176); c.fill();
+    c.fillStyle='#4a5a6a'; c.beginPath(); c.ellipse(205,176,26,16,0,Math.PI,0); c.fill();
+    R(c,150,152,110,3,'#ece4d4'); for(let x=152;x<258;x+=10) R(c,x,147,3,6,'#d8d0c0');
+    // pond
+    c.fillStyle=vgrad(c,170,214,['#1e4aa8','#2a66c8','#3a86e0']); c.fillRect(0,170,AW,44);
+    for(let y=174;y<212;y+=3){ const r=rnd(y); for(let k=0;k<6;k++) R(c,r()*AW,y,6+r()*30,1,'rgba(200,230,255,0.45)'); }
+    c.fillStyle='rgba(20,40,60,0.35)'; c.fillRect(0,170,AW,8); // tree reflections
+    for(const [x,y] of [[300,196],[330,200],[120,204]]){ c.fillStyle='#3a8a3a'; c.beginPath(); c.ellipse(x,y,6,2,0,0,7); c.fill(); R(c,x-1,y-1,2,1,'#7ad05a'); }
+    // big trees framing the stage
+    trunk(c,40,100,214,14,['#2b1a10','#5a3a22','#7a5634']); trunk(c,452,90,214,16,['#2b1a10','#5a3a22','#7a5634']);
+    canopy(c,46,86,86,62,21,['#0e2a1a','#1f4a26','#3a7a2e','#6aa838','#a8d850'],13);
+    canopy(c,446,78,92,70,22,['#0e2a1a','#1f4a26','#3a7a2e','#6aa838','#a8d850'],14);
+    canopy(c,120,168,46,12,23,['#0e2a1a','#1f4a26','#3a7a2e','#6aa838','#a8d850'],7);
+    canopy(c,372,166,58,12,24,['#0e2a1a','#1f4a26','#3a7a2e','#6aa838','#a8d850'],7);
+    // stone ledge between the pond and the walkway
+    c.fillStyle=vgrad(c,210,FLOOR,['#6a5038','#4a3626']); c.fillRect(0,210,AW,FLOOR-210);
+    // rocks ringing the pond
+    const rp=['#2b1f18','#9a7a5a','#d8b88a','#f4dcae','#fff4dc'];
+    let r=rnd(41); for(let i=0;i<14;i++){ const x=8+i*35+r()*14, w=26+r()*22; rock(c,x,212+r()*4,w,14+r()*8,100+i,rp); }
+    for(const [x,y,w,h] of [[110,186,22,12],[270,190,26,12],[350,184,18,10]]) rock(c,x,y,w,h,x,rp);
+    // walkable stone floor (flat top at FLOOR) with big slabs below
+    c.fillStyle=vgrad(c,FLOOR,AH,['#c8a878','#9a7a54','#5a4430']); c.fillRect(0,FLOOR,AW,AH-FLOOR);
+    R(c,0,FLOOR,AW,2,'#f4dcae');
+    r=rnd(42); for(let row=0;row<3;row++){ let x=-r()*30; const y=FLOOR+3+row*12; while(x<AW){ const w=30+r()*36; rock(c,x+w/2,y+6,w,11,(x|0)+row*99,rp); x+=w+2; } }
+    contact(c); vignette(c,0.12);
   },
   laneway(c){
     c.fillStyle=vgrad(c,0,FLOOR,['#140c1a','#24162c','#3a2440']); c.fillRect(0,0,AW,FLOOR);
@@ -420,7 +472,7 @@ const FG = {
   server(c){ R(c,0,246,AW,2,'#3a4256'); for(let x=0;x<AW;x+=24) R(c,x,246,2,24,'#3a4256'); },
   discord(c){ c.strokeStyle='#111'; c.lineWidth=2; c.beginPath(); c.moveTo(0,262); c.bezierCurveTo(80,252,140,272,220,264); c.stroke(); },
   arcade(c){ R(c,0,180,12,90,'#2a0a48'); R(c,468,180,12,90,'#2a0a48'); },
-  park(c){ for(const [x,y,rr] of [[0,0,40],[28,8,24],[480,0,44],[450,10,26]]){ circ(c,x,y,rr,'#1f5a1e'); circ(c,x+6,y+6,rr*0.6,'#2f7d2a'); } },
+  park(c){ const pal=['#0a2012','#163a1c','#2a6a26','#4a9a32','#8ac844']; canopy(c,8,6,60,30,61,pal,10); canopy(c,476,4,64,32,62,pal,10); },
   laneway(c){ R(c,446,10,4,40,'#222'); R(c,430,30,36,22,'#c0262d'); txt(c,'BAR',448,37,'#fff4e6',6,'center'); },
 };
 
@@ -486,7 +538,7 @@ function retro(c,w,h,spread,ncol){ // drawn edges + limited per-scene palette wi
 function bake(fn){
   const art=document.createElement('canvas'); art.width=AW; art.height=AH;
   const a=art.getContext('2d',{willReadFrequently:true});
-  fn(a); retro(a,AW,AH,34,24);
+  fn(a); retro(a,AW,AH,12,40);
   return art; // 480x270; drawn with smoothing off it scales up crisp, and costs ~0.5MB instead of 8MB
 }
 // optional art override: drop img/arenas/<id>.png (any 16:9 size) next to index.html and it replaces the procedural scene
@@ -496,9 +548,13 @@ function render(id){ loadOverride(id); return override[id] || cache[id] || (cach
 function renderFG(id){ if(override[id]) return null; if(!(id in fgCache)) fgCache[id]= FG[id] ? bake(FG[id]) : null; return fgCache[id]; }
 function draw(ctx,id,t){ const s=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(render(id),0,0,AW,AH); ctx.imageSmoothingEnabled=s; if(ANIM[id]&&!override[id]) ANIM[id](ctx,t); }
 function drawFG(ctx,id){ const cv=renderFG(id); if(cv){ const s=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(cv,0,0,AW,AH); ctx.imageSmoothingEnabled=s; } }
-function thumb(id){ const s=document.createElement('canvas'); s.width=AW; s.height=AH; const c=s.getContext('2d'); c.imageSmoothingEnabled=false; c.drawImage(render(id),0,0,AW,AH); return s.toDataURL('image/png'); }
+// preview: full scene + foreground, box-filtered down to card size so the dither averages into clean colour (no moiré)
+function thumb(id){ const s=document.createElement('canvas'); s.width=AW; s.height=AH; const c=s.getContext('2d'); c.imageSmoothingEnabled=false;
+  c.drawImage(render(id),0,0,AW,AH); drawFG(c,id);
+  const t=document.createElement('canvas'); t.width=AW/2; t.height=AH/2; const tc=t.getContext('2d'); tc.imageSmoothingEnabled=true; tc.imageSmoothingQuality='high'; tc.drawImage(s,0,0,AW/2,AH/2);
+  return t.toDataURL('image/png'); }
 function clearCache(){ for(const k in cache) delete cache[k]; for(const k in fgCache) delete fgCache[k]; }
 
 DD.Arenas = { draw, drawFG, thumb, render, clearCache, AW, AH, FLOOR };
-DD.Pix = { R, circ, poly, glow, vgrad, cloud, ridge, skyline, stars, texture, dither, retro, rnd, fbm, shade, txt };
+DD.Pix = { R, circ, poly, glow, vgrad, cloud, ridge, skyline, stars, texture, dither, retro, rnd, fbm, shade, txt, canopy, rock, trunk };
 })();

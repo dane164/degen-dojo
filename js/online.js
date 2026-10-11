@@ -3,7 +3,7 @@
 const SB_URL='https://joweztiusidvcmjmxjsr.supabase.co';
 const SB_KEY='sb_publishable_z8xZC3UIzOjb7Pr9TKpvUA_Qbpe-I6_'; // publishable (safe in client); all writes go through checked RPCs
 const ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}];
-const KEYS=['left','right','up','down','p','k','block','sp'];
+const KEYS=['left','right','up','down','p','k','block','sp','th'];
 let sb=null;
 
 function available(){ return !!(window.supabase && window.supabase.createClient); }

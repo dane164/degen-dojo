@@ -16,14 +16,21 @@ Deploy as-is to Vercel, Netlify, GitHub Pages or Cloudflare Pages.
 | `js/sprites.js` | Procedural pixel-art fighters (head types, accessories, poses), outlined and cached. |
 | `js/arenas.js` | 12 pixel-art arenas (dithered, with foreground layers) plus the shared pixel toolkit `DD.Pix`. |
 | `js/scene.js` | Full-page sunset dojo backdrop behind the UI, with drifting petals. |
+| `js/specials.js` | All 24 special moves: logic, poses, projectiles and effects, one block per fighter. Edit a special here. |
 | `js/game.js` | Fight engine: physics, normals, blocking, hit and chip damage, 24 special moves, projectiles, rounds, HUD, and the CPU AI (easy/normal/hard). |
 | `js/audio.js` | WebAudio chiptune generator (a unique song per arena), SFX, and the announcer (speechSynthesis, prefers a deep English voice, falls back silently). |
 | `js/online.js` | Ranked online: anonymous profiles, matchmaking/ELO RPCs, WebRTC P2P link with Supabase relay fallback, host/guest netcode. |
 | `js/main.js` | Modes (Ranked / VS CPU / VS Friend), screens, leaderboard, keyboard + mouse + split-keyboard + gamepad + touch input, game loop. |
 | `css/style.css` | Orange retro UI. Theme tokens are at the top (`--or`, `--cream`, `--br`, etc.). |
 
+## Match chat
+Ranked only. Links, wallet/contract addresses and slurs are stripped on both the sender and the receiver, max 5 messages per 10s, no repeats, and each player can mute their opponent. Enter opens chat, Esc leaves it. Messages travel over the match's P2P link, so they're never stored.
+
+## Audio
+The ♪ button mutes **music only**. Fight SFX and the announcer keep playing (`setMuted` in `js/audio.js` ramps `musicGain`).
+
 ## Controls
-A/D move, W jump, S crouch, double-tap to dash. Left-click (or J) punches, right-click (or K) kicks. Space blocks, and tapping it just before a hit parries (the attacker's shield is locked for 1.5s; nothing else changes). Space + left-click throws. E, L or middle-click fires the special (hold to charge). Esc pauses. Mobile gets on-screen buttons.
+A/D move, W jump, S crouch, double-tap to dash. Left-click (or J) punches, right-click (or K) kicks. Space blocks, and tapping it just before a hit parries (the attacker's shield is locked for 1.5s; nothing else changes). Q throws (local P1: R, P2: '). Block + punch is just a punch now. E, L or middle-click fires the special (hold to charge). Esc pauses. Mobile gets on-screen buttons.
 
 Move list: punch ×3 chain (jab › straight › launcher uppercut), kick ×2 (› roundhouse), toward+P overhead, back+P anti-air, toward+K lunge kick, down+P/K lows and sweep, air down+K dive kick, block+P throw, attack out of a dash. Jumping forward over a grounded opponent always clears them (small air pushbox). In the corner, the attacker is pushed back instead of the cornered defender (full on block, less on hit so combos still connect). Blocking drains a guard bar; when it empties you go dizzy. After a knockdown you get `WAKE_INV` (14) frames of hit/throw immunity once standing, and buttons pressed during getup are buffered and fire on the first standing frame.
 

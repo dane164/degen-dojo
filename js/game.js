@@ -3,6 +3,7 @@
 const AW=480, AH=270, FLOOR=232, WALL_L=18, WALL_R=462;
 const SC=2, GRAV=0.62, MAXHP=1000, ROUND_TIME=60, WINS_NEEDED=2, WAKE_INV=14;
 const A = ()=>DD.Audio;
+const SPX = ()=>DD.Specials||{update:{},pose:{},fx:{},under:{},proj:{},zone:{},drawFighter:{},tick(){},drawBeam(){return false;},RANGED:[],SELF:[]};
 
 // attack table (frames @60fps)
 const ATK = {
@@ -38,7 +39,7 @@ class Fighter {
     this.x = this.side===0 ? 130 : 350; this.y=FLOOR; this.vx=0; this.vy=0; this.face=this.side===0?1:-1;
     this.hp=MAXHP; this.meter=0; this.state='idle'; this.t=0; this.atk=null; this.atkHit=false;
     this.stun=0; this.invuln=0; this.flash=0; this.hist=[];
-    this.armor=0; this.reflect=0; this.healT=0; this.poison=0; this.slow=0;
+    this.armor=0; this.reflect=0; this.healT=0; this.poison=0; this.slow=0; this.timeSlow=0; this.shellT=0; this.root=0;
     this.buff={dmg:0,spd:0,steal:0,plot:0};
     this.sp=null; this.hidden=false; this.landLag=0; this.tap={l:-99,r:-99}; this.frame=0;
     this.prev={}; this.inp={};
@@ -156,6 +157,8 @@ class Fight {
     const blk=f.state==='block'||f.state==='cblock'; if(blk) f.shieldCrouch=f.state==='cblock'; f.shieldVis = blk ? Math.min(1,f.shieldVis+0.25) : Math.max(0,f.shieldVis-0.16);
     if(f.state!=='block'&&f.state!=='cblock'&&this.frame-f.lastBlock>50) f.guard=Math.min(100,f.guard+0.3);
     
+    SPX().tick(this,f);
+    if(f.timeSlow>0){ f.timeSlow--; if(f.timeSlow%2 && this.phase==='fight' && f.state!=='ko'){ for(const k of ['p','k','sp','up','block','left','right']) if(f.inp[k]&&!f.prev[k]) (f.wb=f.wb||{})[k]=1; return; } }
     if(f.state==='ko'){ this.physics(f); f.vx*=0.9; return; }
     if(f.state==='win'){ f.vx=0; this.physics(f); return; }
     if(this.phase!=='fight' && this.phase!=='intro'){ if(f.state==='attack'||f.state==='special'||f.state==='walk'||f.state==='charge'||f.state==='dash'){ if(f.grounded) f.set('idle'); } this.physics(f); f.vx*=0.8; return; }
@@ -178,16 +181,16 @@ class Fight {
         if(I.sp && f.meter<100 && !I.left && !I.right){ f.set('charge'); break; }
         if(f.pressed('block')) f.blockPress=this.frame;
         const fwd=(I.right&&f.face>0)||(I.left&&f.face<0), back=(I.left&&f.face>0)||(I.right&&f.face<0);
+        if(f.pressed('th')){ this.tryThrow(f,o); break; }   // dedicated throw button (block + punch is just a punch now)
         if(f.pressed('p')){
-          if(I.block && !I.down){ this.tryThrow(f,o); break; }
           this.startAttack(f, I.down?'cP' : fwd?'FP' : back?'BP' : 'P'); break; }
         if(f.pressed('k')){ this.startAttack(f, I.down?'cK' : fwd?'FK' : 'K'); break; }
-        if(f.pressed('up')){ f.vy=-11.6; f.vx=(I.right?1:I.left?-1:0)*3.4*spd; f.set('jump'); this.snd('jump'); break; }
+        if(f.pressed('up') && !(f.root>0)){ f.vy=-11.6; f.vx=(I.right?1:I.left?-1:0)*3.4*spd; f.set('jump'); this.snd('jump'); break; }
         // double-tap dash
         if(f.pressed('left')){ if(f.frame-f.tap.l<14){ this.dash(f,-1); f.tap.l=-99; break; } f.tap.l=f.frame; }
         if(f.pressed('right')){ if(f.frame-f.tap.r<14){ this.dash(f,1); f.tap.r=-99; break; } f.tap.r=f.frame; }
         if(I.block && f.guardLock<=0){ f.set(I.down?'cblock':'block'); f.vx=0; break; }
-        if(I.block && f.guardLock>0 && f.pressed('block')) this.pop(f.x,f.y-140,'NO SHIELD','#8a8a8a');
+        if(I.block && f.guardLock>0 && f.pressed('block') && this.frame-(f.noShieldT||-99)>45){ f.noShieldT=this.frame; this.pop(f.x,f.y-140,'NO SHIELD','#8a8a8a'); }
         if(I.down){ f.set('crouch'); f.vx=0; break; }
         if(I.left||I.right){ const d=I.right?1:-1; f.vx = d*2.5*spd*(d===f.face?1:0.8); f.set('walk'); }
         else { f.vx=0; f.set('idle'); }
@@ -345,7 +348,7 @@ class Fight {
     if(def.buff.plot>0) dmg*=0.6;
     // Unbreakable armour: absorb + counter
     if(def.armor>0 && opts.melee){
-      def.hp-=dmg*0.3; def.flash=6; def.armor=0;
+      def.hp-=dmg*0.3; def.flash=6; def.armor=0; def.shellT=0; this.addFx({kind:'crystalBurst',x:def.x,y:def.y-60,life:20,max:20}); for(let i=0;i<12;i++) this.addFx({kind:'shard',x:def.x,y:def.y-60,vx:rand(-4,4),vy:rand(-5,1),g:0.18,life:30,s:rand(4,8),rot:rand(0,6),vr:rand(-0.3,0.3)});
       this.spark(def.x,def.y-72,'#5ad1ff',12); this.pop(def.x,def.y-140,'DIAMOND','#5ad1ff');
       this.hit(def,att,{dmg:140,h:'unblockable',kb:5,hs:24,kd:1,heavy:1,dirX:-dir});
       return false;
@@ -395,7 +398,7 @@ class Fight {
       commandGrab:['#ffffff','dust'], heal:['#3bff8a','rise'], rageBuff:['#ff2e2e','fire'], speedBuff:['#ffd23f','lines'], reflect:['#5ad1ff','ring'],
       lifesteal:['#ff2ec4','rise'], plotArmor:['#ffb000','ring'], rewind:['#00ffd0','ring'], clones:['#cccccc','smoke'], zone:['#5fd13a','rise'],
       teleportShuriken:['#ffffff','smoke'], feint:['#ff2e2e','smoke'], drainMeter:['#9bff3a','smoke'], wave:['#5ad1ff','splash'], barrage:['#7fdcff','orb'],
-      armorCounter:['#5ad1ff','shard'], invulnRoll:['#ffffff','lines'], multiDash:['#ffd23f','lines'], rugPull:['#c0262d','dust'] }[ty]||['#ffd23f','ring'];
+      armorCounter:['#5ad1ff','shard'], invulnRoll:['#ffffff','lines'], multiDash:['#ffd23f','lines'], rugPull:['#c0262d','dust'], candles:['#3bff6a','dust'], flurry:['#ff2e2e','lines'], timeStop:['#7fa8ff','ring'], ratioDrop:['#ff2ec4','rise'], crystalShell:['#5ad1ff','shard'], panicSell:['#ffffff','smoke'], moonShot:['#ff6a00','fire'], capitulation:['#ff2e2e','dust'], stampede:['#3bff6a','dust'], tsunami:['#5ad1ff','splash'], gasSpike:['#9bff3a','smoke'], bigBrainBeam:['#c9a0ff','orb'], copiumHuff:['#c98aff','rise'], scripted:['#cccccc','smoke'], thumbnailFace:['#ff2e2e','ring'], touchGrass:['#6fe04a','rise'], reverseCard:['#1fb04a','ring'], plotArmour:['#ffb000','ring'], rollback:['#00ffd0','ring'], zoomies:['#ffd23f','lines'], loafRoll:['#e8b060','smoke'], bodySlam:['#ffffff','dust'], infiniteScroll:['#7fdcff','orb'] }[ty]||['#ffd23f','ring'];
     const [col,k]=V;
     if(k==='orb'){ for(let i=0;i<14;i++){ const a=i/14*Math.PI*2; this.addFx({kind:'px',x:x+d*30+Math.cos(a)*24,y:y-82+Math.sin(a)*24,vx:-Math.cos(a)*1.6,vy:-Math.sin(a)*1.6,col,life:16,s:3}); } this.ring(x+d*30,y-82,col); }
     else if(k==='fire'){ for(let i=0;i<18;i++) this.addFx({kind:'px',x:x+rand(-16,16),y:y-rand(0,30),vx:rand(-0.6,0.6),vy:rand(-3.5,-1.2),col:i%2?col:'#ffd23f',life:20+(i%8),s:3}); }
@@ -410,6 +413,7 @@ class Fight {
   endSpecial(f){ f.sp=null; f.hidden=false; f.passThru=false; if(f.grounded) f.set('idle'); else f.set('jump'); }
   updateSpecial(f,o){
     const S=f.sp; if(!S){ f.set('idle'); return; }
+    { const U=SPX().update[S.type]; if(U){ U(this,f,o,S,++S.t,f.face); return; } }
     const t=++S.t, d=f.face;
     switch(S.type){
       case 'armorCounter':
@@ -433,6 +437,28 @@ class Fight {
           if(t%6===0 && this.overlap(this.norm(S.beam),o.hurt())) this.hit(f,o,{dmg:24,h:'mid',kb:1.2,hs:10,noMeter:1}); }
         else S.beam=null;
         if(t>52) this.endSpecial(f); break;
+      case 'candles': { // three candles rise from the floor, each one further along
+        for(let k=0;k<3;k++){ const at=12+k*12; const cx=clamp(f.x+d*(48+k*58),WALL_L+8,WALL_R-8);
+          if(t===at){ this.addFx({kind:'candle',x:cx,life:30,max:30,red:false}); this.shake=Math.max(this.shake,5); this.snd('heavy'); this.dust(cx,FLOOR); }
+          if(t>=at+3 && t<=at+16 && !(S.hitK&(1<<k)) && this.overlap({x0:cx-13,x1:cx+13,y0:FLOOR-120,y1:FLOOR},o.hurt())){ S.hitK=(S.hitK||0)|(1<<k); this.hit(f,o,{dmg:k===2?70:45,h:'mid',kb:k===2?3:1.5,hs:16,launch:k===2?1:0,kd:k===2?1:0,heavy:k===2?1:0}); } }
+        if(t>56) this.endSpecial(f); break; }
+      case 'flurry': { // 200 WPM: rapid jabs, letters fly, last key launches
+        if(t>=6 && t<=46){ f.vx=d*1.2; if((t-6)%5===0){ S.k=(S.k||0)+1;
+            this.pop(f.x+d*rand(20,50),f.y-rand(60,120),['A','S','D','F','!!','W','CAPS','?!'][S.k%8],['#ff2e2e','#ffffff','#ffd23f'][S.k%3]);
+            if(this.overlap(this.box(f,0,40,-62,-18),o.hurt())) this.hit(f,o,{dmg:14,h:'high',kb:0.4,hs:9,noMeter:1}); } }
+        else f.vx=0;
+        if(t===50 && this.overlap(this.box(f,0,44,-70,-10),o.hurt())) this.hit(f,o,{dmg:55,h:'mid',kb:2,hs:24,launch:1,kd:1,heavy:1});
+        if(t>60) this.endSpecial(f); break; }
+      case 'timeStop': // the opponent crawls, you sprint
+        if(t===1){ o.timeSlow=150; f.buff.spd=170; this.addFx({kind:'tint',col:'rgba(40,70,200,0.26)',life:150,max:150,label:'4:00 AM'}); }
+        if(t>16) this.endSpecial(f); break;
+      case 'ratioDrop': { // three Ls fall where the enemy is standing; each hit steals health
+        if(t===10||t===26||t===42){ (S.drops=S.drops||[]).push({x:clamp(o.x,WALL_L+12,WALL_R-12),t0:t}); }
+        for(const L of (S.drops||[])){ const k=t-L.t0;
+          if(k===0) this.addFx({kind:'ratioL',x:L.x,life:26,max:26});
+          if(k===18){ this.shake=Math.max(this.shake,6); this.dust(L.x,FLOOR);
+            if(this.overlap({x0:L.x-16,x1:L.x+16,y0:FLOOR-130,y1:FLOOR},o.hurt())){ const hp0=o.hp; this.hit(f,o,{dmg:48,h:'overhead',kb:1,hs:18}); const st=Math.max(0,hp0-o.hp)*0.6; if(st>0){ f.hp=Math.min(MAXHP,f.hp+st); this.spark(f.x,f.y-100,'#ff2ec4',4); } } } }
+        if(t>70) this.endSpecial(f); break; }
       case 'groundSlam':
         if(t===4){ f.vy=-10.5; f.vx=clamp((o.x-f.x)/34,-4.5,4.5); }
         if(t>6 && f.grounded && !S.landed){ S.landed=1; f.vx=0; this.shake=14; this.snd('heavy');
@@ -523,30 +549,37 @@ class Fight {
   // ---- projectiles ----
   shoot(f,o){
     this.proj.push({owner:f, x:f.x+(o.ox!==undefined?o.ox:f.face*36), y:f.y+(o.y||-40)*f.size, w:o.w, h:o.h, vx:o.vx, vy:o.vy||0,
-      dmg:o.dmg, kind:o.kind, h2:o.h2||'mid', kb:o.kb||2, hs:o.hs||14, kd:o.kd, heavy:o.heavy, life:o.life||160, onHit:o.onHit, noMeter:o.noMeter, t:0});
+      dmg:o.dmg, kind:o.kind, h2:o.h2||'mid', kb:o.kb||2, hs:o.hs||14, kd:o.kd, heavy:o.heavy, life:o.life||160, onHit:o.onHit, noMeter:o.noMeter, t:0, multi:o.multi||0, cd:0, home:o.home||0, ret:o.ret||0, launch:o.launch});
   }
   updateProj(){
     for(const p of this.proj){
-      p.t++; p.x+=p.vx; p.y+=p.vy; p.life--;
+      p.t++; if(p.cd>0) p.cd--;
+      if(p.home){ const tg=this.other(p.owner); p.vy+=Math.sign((tg.y-50)-p.y)*p.home; p.vy=clamp(p.vy,-2,2); }
+      if(p.ret && p.t===p.ret){ p.vx=-p.vx; p.cd=0; }
+      if(p.ret && p.t>p.ret && Math.abs(p.x-p.owner.x)<14){ p.life=0; continue; }
+      p.x+=p.vx; p.y+=p.vy; p.life--;
       if(p.x<-40||p.x>AW+40) p.life=0;
       const tgt=this.other(p.owner);
       const box={x0:p.x-p.w/2,x1:p.x+p.w/2,y0:p.y-p.h/2,y1:p.y+p.h/2};
-      if(p.life>0 && this.overlap(box,tgt.hurt()) && !tgt.invuln && !tgt.hidden){
+      if(p.life>0 && !(p.cd>0) && this.overlap(box,tgt.hurt()) && !tgt.invuln && !tgt.hidden){
         if(tgt.reflect>0){ p.owner=tgt; p.vx=-p.vx*1.2; this.spark(p.x,p.y,'#5ad1ff',8); this.pop(tgt.x,tgt.y-140,'NO U','#5ad1ff'); continue; }
         if(this.hit(p.owner,tgt,{dmg:p.dmg,h:p.h2,kb:p.kb,hs:p.hs,kd:p.kd,heavy:p.heavy,noMeter:p.noMeter,dirX:Math.sign(p.vx)||1}) && p.onHit) p.onHit(tgt);
-        p.life=0; this.spark(p.x,p.y,'#ffd23f',6);
+        this.spark(p.x,p.y,'#ffd23f',6); if(p.multi>1){ p.multi--; p.cd=10; } else p.life=0;
       }
     }
     this.proj=this.proj.filter(p=>p.life>0);
   }
   updateZones(){
-    for(const z of this.zones){ z.life--; const tgt=this.other(z.owner);
+    for(const z of this.zones){ z.life--; const tgt=this.other(z.owner); const ZT=SPX().zone[z.kind]; if(ZT){ ZT(this,z,tgt); continue; }
       if(Math.abs(tgt.x-z.x)<z.w/2 && tgt.grounded){ tgt.slow=6; if(this.phase==='fight' && tgt.hp>1) tgt.hp-=0.35; if(z.life%14===0) this.spark(tgt.x+rand(-8,8),FLOOR-4,'#5fd13a',1,0,-1); } }
     this.zones=this.zones.filter(z=>z.life>0);
   }
   updateClones(){
-    for(const c of this.clones){ c.life--; c.t++; const tgt=this.other(c.owner); const d=tgt.x>=c.x?1:-1; c.face=d; c.x+=d*2.6;
-      if(Math.abs(tgt.x-c.x)<28 && Math.abs(tgt.y-c.y)<80 && c.life>0){ this.hit(c.owner,tgt,{dmg:55,h:'mid',kb:3,hs:18,dirX:d}); c.life=0; this.spark(c.x,c.y-60,'#ccc',10); } }
+    for(const c of this.clones){ c.life--; c.t++; const tgt=this.other(c.owner); const d=tgt.x>=c.x?1:-1; c.face=d;
+      if(c.atk>0){ c.atk--; if(c.atk>5) c.x+=c.dv||0; if(c.atk===5 && Math.abs(tgt.x-c.x)<34 && Math.abs(tgt.y-c.y)<80) this.hit(c.owner,tgt,{dmg:c.group?32:55,h:'mid',kb:2,hs:16,dirX:d}); if(c.atk===0){ c.life=0; this.spark(c.x,c.y-60,'#ccc',10); } continue; }
+      c.x+=d*2.6;
+      if(Math.abs(tgt.x-c.x)<28 && Math.abs(tgt.y-c.y)<80 && c.life>0){ // scripted: the whole group swings in sync
+        for(const q of this.clones) if(q===c || (c.group && q.group===c.group && !(q.atk>0))){ q.atk=10; const qd=tgt.x>=q.x?1:-1; q.dv=qd*Math.max(0,Math.abs(tgt.x-q.x)-18)/5; } } }
     this.clones=this.clones.filter(c=>c.life>0);
   }
 
@@ -568,8 +601,8 @@ class Fight {
       ch:this.comboHud.map(c=>[c.n,c.t]), ov:this.over?1:0,
       p:this.p.map(F),
       pr:this.proj.map(q=>[this.p.indexOf(q.owner),q.kind,r1(q.x),r1(q.y),q.w,q.h,r1(q.vx),q.t]),
-      z:this.zones.map(z=>[this.p.indexOf(z.owner),r1(z.x),z.w,z.life]),
-      c:this.clones.map(c=>[this.p.indexOf(c.owner),r1(c.x),r1(c.y),c.face,c.t]), ev};
+      z:this.zones.map(z=>[this.p.indexOf(z.owner),r1(z.x),z.w,z.life,z.kind||0]),
+      c:this.clones.map(c=>[this.p.indexOf(c.owner),r1(c.x),r1(c.y),c.face,c.t,c.atk||0]), ev};
   }
   applySnapshot(S){
     this.superFreeze = S.sz ? {idx:S.sz[0],t:S.sz[1],dur:S.sz[2]} : null;
@@ -583,8 +616,8 @@ class Fight {
       f.hidden=!!d.hd; f.invuln=d.iv; f.flash=d.fl; f.armor=d.ar; f.reflect=d.rf; f.buff={dmg:d.bf[0],spd:d.bf[1],steal:d.bf[2],plot:d.bf[3]}; f.slow=d.sl;
       f.shieldVis=d.sv; f.guardLock=d.gk||0; f.shieldCrouch=!!d.sc; f.shieldFlash=d.sf; f.shieldHitY=d.sy; f.parryFlash=d.pf; f.wins=d.w; f.launched=!!d.ln; f.combo=d.cb; f.lastBlock=d.lb; f.airUsed=!!d.au; });
     this.proj=S.pr.map(q=>({owner:this.p[q[0]],kind:q[1],x:q[2],y:q[3],w:q[4],h:q[5],vx:q[6],t:q[7]}));
-    this.zones=S.z.map(z=>({owner:this.p[z[0]],x:z[1],w:z[2],life:z[3]}));
-    this.clones=S.c.map(c=>({owner:this.p[c[0]],x:c[1],y:c[2],face:c[3],t:c[4]}));
+    this.zones=S.z.map(z=>({owner:this.p[z[0]],x:z[1],w:z[2],life:z[3],kind:z[4]||undefined}));
+    this.clones=S.c.map(c=>({owner:this.p[c[0]],x:c[1],y:c[2],face:c[3],t:c[4],atk:c[5]||0}));
     for(const [name,args] of (S.ev||[])) this.replay(name,args);
     if(S.ov) this.over=true;
   }
@@ -611,16 +644,17 @@ class Fight {
     if(this.flashScreen>0){ this.flashScreen--; ctx.fillStyle='rgba(255,106,0,'+(this.flashScreen/30)+')'; ctx.fillRect(0,0,AW,AH); }
 
     // zones
-    for(const z of this.zones){ ctx.fillStyle='rgba(95,209,58,0.18)'; ctx.fillRect(z.x-z.w/2,FLOOR-2,z.w,6);
+    for(const z of this.zones){ const ZD=SPX().under['zone_'+z.kind]; if(ZD){ ZD(ctx,z,this); continue; } ctx.fillStyle='rgba(95,209,58,0.18)'; ctx.fillRect(z.x-z.w/2,FLOOR-2,z.w,6);
       for(let x=z.x-z.w/2;x<z.x+z.w/2;x+=3){ const h=4+((x*7+this.frame/6|0)%6); ctx.fillStyle=((x/3)|0)%2?'#3fae2a':'#6fe04a'; ctx.fillRect(x,FLOOR-h,1.5,h); } }
     // rug effect
     for(const e of this.fx) if(e.kind==='rug'){ const w=(30-e.life)*14; ctx.fillStyle='#c0262d'; const x0=e.dir>0?e.x:e.x-w; ctx.fillRect(x0,FLOOR-3,w,4); ctx.fillStyle='#ffd23f'; for(let x=0;x<w;x+=8) ctx.fillRect(x0+x,FLOOR-2,4,1); }
 
+    for(const e of this.fx){ const UD=SPX().under[e.kind]; if(UD) UD(ctx,e,this); }
     // shadows
     for(const f of this.p){ if(f.hidden) continue; const w=(13-Math.min(8,(FLOOR-f.y)/14))*f.size; ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(f.x,FLOOR+1,w,3,0,0,7); ctx.fill(); }
 
     // clones
-    for(const c of this.clones){ const cv=DD.Sprites.get(c.owner.spec,'walk',(c.t/6)|0,c.owner.alt,false); const k=SC/DD.Sprites.RES; ctx.save(); ctx.globalAlpha=0.6; ctx.translate(c.x,c.y); ctx.scale(c.face*k,k); ctx.drawImage(cv,-cv._ox,-cv._oy); ctx.restore(); }
+    for(const c of this.clones){ const cv=c.atk>0?DD.Sprites.get(c.owner.spec,'punch',1,c.owner.alt,false):DD.Sprites.get(c.owner.spec,'walk',(c.t/6)|0,c.owner.alt,false); const k=SC/DD.Sprites.RES; ctx.save(); ctx.globalAlpha=0.6; ctx.translate(c.x,c.y); ctx.scale(c.face*k,k); ctx.drawImage(cv,-cv._ox,-cv._oy); ctx.restore(); }
 
     // fighters (attacker on top)
     const busy=f=>f.state==='attack'||f.state==='special';
@@ -630,7 +664,7 @@ class Fight {
     for(const f of order) this.drawFighter(ctx,f);
 
     // beams
-    for(const f of this.p){ const b=f.sp&&f.sp.beam; if(!b) continue; const n=this.norm(b), h=n.y1-n.y0, fl=(this.frame%4<2);
+    for(const f of this.p){ const b=f.sp&&f.sp.beam; if(!b) continue; const n=this.norm(b), h=n.y1-n.y0, fl=(this.frame%4<2); if(SPX().drawBeam(ctx,b,n,this)) continue;
       ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.fillStyle=b.col; ctx.globalAlpha=0.35; ctx.fillRect(n.x0,n.y0-4,n.x1-n.x0,h+8); ctx.restore();
       ctx.fillStyle=b.col; ctx.fillRect(n.x0,n.y0,n.x1-n.x0,h); ctx.fillStyle=fl?'#ffffff':'#fff7c2'; ctx.fillRect(n.x0,n.y0+h*0.3,n.x1-n.x0,h*0.4);
       ctx.fillStyle=b.col; for(let x=n.x0;x<n.x1;x+=12){ ctx.fillRect(x,n.y0-2-((x+this.frame)%3),6,2); ctx.fillRect(x+6,n.y1,6,2+((x+this.frame)%3)); } }
@@ -650,6 +684,7 @@ class Fight {
         ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(e.big?0.3:0); ctx.globalAlpha=1-p*0.7;
         ctx.fillStyle='#fff'; ctx.beginPath(); for(let i=0;i<n*2;i++){ const a=i/(n*2)*Math.PI*2, rr=i%2?r*0.35:r; ctx.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); } ctx.closePath(); ctx.fill();
         ctx.fillStyle='#ffd23f'; ctx.beginPath(); ctx.arc(0,0,r*0.3,0,7); ctx.fill(); ctx.restore(); }
+      else { const FD=SPX().fx[e.kind]; if(FD) FD(ctx,e,this); }
     }
     for(const t of this.texts){ txt(ctx,t.text,t.x,t.y,t.col,8,'center',true); }
     ctx.restore();
@@ -662,6 +697,7 @@ class Fight {
 
   drawFighter(ctx,f){
     if(f.hidden) return;
+    if(f.sp){ const DF=SPX().drawFighter[f.sp.type]; if(DF && DF(ctx,f,this)) return; }
     const [pose,fr]=this.poseFor(f);
     const blinking = f.invuln>0 && (f.sp || (f.invuln>2 && f.state!=='kd' && f.state!=='getup')) && (this.frame%4<2);
     const cv=DD.Sprites.get(f.spec,pose,fr,f.alt,f.flash>0);
@@ -786,6 +822,7 @@ class Fight {
       case 'attack': { const a=f.atk; if(!a) return ['idle',0]; const ph = t<=a.su?0 : t<=a.su+a.ac?1:2; return [a.pose, ph===1||(a.dive&&t>a.su)?1:0]; }
       case 'special': {
         const ty=f.sp&&f.sp.type;
+        { const PZ=SPX().pose[ty]; if(PZ){ const r=PZ(f,t); if(r) return r; } }
         if(ty==='throw') return ['throw', t>=16?1:0];
         if(ty==='throwWhiff') return ['grab',0];
         if(ty==='invulnRoll' && t<44) return ['ball',(t/3)|0];
@@ -794,6 +831,9 @@ class Fight {
         if(ty==='commandGrab') return ['grab',0];
         if(ty==='groundSlam') return f.grounded?['crouch',0]:['jump',0];
         if(ty==='reflect') return ['block',0];
+        if(ty==='flurry') return t>=6&&t<=52 ? ['punch',(t>>1)&1] : ['charge',0];
+        if(ty==='candles'||ty==='ratioDrop') return ['special',0];
+        if(ty==='timeStop') return ['charge',(t/3)|0];
         if(ty==='feint') return ['heavy',t>14&&t<22?1:0];
         if(['armorCounter','heal','rageBuff','speedBuff','lifesteal','plotArmor','rewind'].includes(ty)) return ['charge',(t/3)|0];
         return ['special',0];
@@ -813,7 +853,7 @@ class Fight {
         ctx.scale(dir,1); txt(ctx,'SELL',0,-4,'#ffffff',8,'center',true); break; }
       case 'gas': for(let i=0;i<7;i++){ const a=i/7*6.28+f*0.05; ctx.fillStyle=i%2?'rgba(155,255,58,0.85)':'rgba(95,174,42,0.85)'; ctx.beginPath(); ctx.arc(Math.cos(a)*w*0.25,Math.sin(a)*h*0.25,w*0.22,0,7); ctx.fill(); } txt(ctx,'$80',0,-3,'#2b1405',8,'center'); break;
       case 'phone': ctx.rotate(Math.sin(f*0.4)*0.4); ctx.fillStyle='#111'; ctx.fillRect(-w/2,-h/2,w,h); ctx.fillStyle=f%4<2?'#7fdcff':'#ff2ec4'; ctx.fillRect(-w/2+1.5,-h/2+1.5,w-3,h-5); break;
-      default: ctx.fillStyle='#ffd23f'; ctx.fillRect(-w/2,-h/2,w,h);
+      default: { const PD=SPX().proj[p.kind]; if(PD) PD(ctx,p,this); else { ctx.fillStyle='#ffd23f'; ctx.fillRect(-w/2,-h/2,w,h); } }
     }
     ctx.restore();
   }
@@ -878,13 +918,16 @@ const LEVELS = {
   normal:{react:15, block:0.45, aggr:0.55, punish:0.45, parry:0.06, combo:0.55, aa:0.45, throw:0.3},
   hard:  {react:8,  block:0.72, aggr:0.7,  punish:0.85, parry:0.18, combo:0.85, aa:0.8,  throw:0.55},
 };
-const RANGED = ['teleportShuriken','beam','wave','drainMeter','bigBeam','barrage','rugPull','zone','clones'];
-const SELF = ['armorCounter','heal','rageBuff','speedBuff','lifesteal','plotArmor','rewind'];
+const RANGED = ['teleportShuriken','candles','wave','drainMeter','bigBeam','barrage','rugPull','zone','clones','ratioDrop'];
+const SELF = ['armorCounter','heal','rageBuff','speedBuff','lifesteal','plotArmor','rewind','timeStop'];
 class CPU {
   constructor(level){ this.L=LEVELS[level]||LEVELS.normal; this.cd=30; this.hold={}; this.holdT=0; this.q=[]; }
   // queue: [{p:'p'|'k'|'sp'|'up'|'left'|'right', h:{...held}, w:frames to wait before}]
   seq(items){ this.q=items.map(x=>({...x})); }
-  think(me,op,fight){
+  think(me,op,fight){ // shield locked: don't hold block, back off instead
+    const r=this._think(me,op,fight); if(!(me.guardLock>0) || !r || !r.block) return r;
+    const o={...r}; delete o.block; if(!o.down){ o[me.face>0?'left':'right']=true; } return o; }
+  _think(me,op,fight){
     const L=this.L, dx=op.x-me.x, dist=Math.abs(dx), toward=dx>0?'right':'left', away=dx>0?'left':'right';
     // run queued sequence first
     if(this.q.length){
@@ -913,11 +956,12 @@ class CPU {
     // punish whiffs
     if(op.state==='attack' && op.atk && op.t>op.atk.su+op.atk.ac && dist<80 && Math.random()<L.punish){ this.combo(dist,toward); return {}; }
     // throw a turtle
-    if((op.state==='block'||op.state==='cblock') && dist<60 && Math.random()<L.throw){ this.seq([{p:'p',h:{block:true}}]); this.hold={}; return {}; }
+    if((op.state==='block'||op.state==='cblock') && dist<60 && Math.random()<L.throw){ this.seq([{p:'th'}]); this.hold={}; return {}; }
     // special
     if(me.meter>=100){
       const ty=me.spec.special.type;
-      if(SELF.includes(ty) || (RANGED.includes(ty) && dist>80) || (!RANGED.includes(ty) && dist<(ty==='charge'?400:ty==='commandGrab'?60:150))){ this.seq([{p:'sp'}]); this.hold={}; this.cd=20; return {}; }
+      const SELF2=SELF.concat(SPX().SELF), RANGED2=RANGED.concat(SPX().RANGED);
+      if(SELF2.includes(ty) || (RANGED2.includes(ty) && dist>80) || (!RANGED2.includes(ty) && dist<((ty==='charge'||ty==='stampede')?400:(ty==='commandGrab'||ty==='bodySlam')?60:150))){ this.seq([{p:'sp'}]); this.hold={}; this.cd=20; return {}; }
     }
     if(me.meter<100 && dist>250 && Math.random()<0.25){ this.set({sp:true},40); return out; }
     const r=Math.random();
@@ -951,5 +995,5 @@ class CPU {
   set(h,t){ this.hold=h; this.holdT=t; }
 }
 
-DD.Game = { Fight, CPU, AW, AH, FLOOR };
+DD.Game = { Fight, CPU, AW, AH, FLOOR, K:{AW,AH,FLOOR,WALL_L,WALL_R,MAXHP,clamp,rand,txt} };
 })();

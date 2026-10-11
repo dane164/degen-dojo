@@ -27,7 +27,7 @@
     <button class="chip" id="profileChip" hidden aria-label="Your ranked profile"></button>
     <button class="icon-btn" id="lbTop" aria-label="Leaderboard">🏆</button>
     <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
-    <button class="icon-btn" id="muteBtn" aria-label="Toggle sound">♪</button>
+    <button class="icon-btn" id="muteBtn" aria-label="Mute music" title="Mute music">♪</button>
   </div>
 </header>
 
@@ -93,6 +93,12 @@
 <!-- GAME -->
 <main id="screen-game" class="screen">
   <div class="game-wrap">
+    <aside class="chat" id="chatBox" hidden aria-label="Match chat">
+      <div class="chat-head"><span>MATCH CHAT</span><button type="button" id="chatMute" class="chat-mute" title="Hide opponent's messages">MUTE</button></div>
+      <div class="chat-log" id="chatLog" aria-live="polite"></div>
+      <div class="chat-quick" id="chatQuick"><button type="button">GG</button><button type="button">GL HF</button><button type="button">nice</button><button type="button">rematch?</button></div>
+      <form class="chat-form" id="chatForm" autocomplete="off"><input id="chatInput" maxlength="80" placeholder="Enter to chat…" spellcheck="false"><button type="submit">↵</button></form>
+    </aside>
     <div class="canvas-box" id="canvasBox">
       <canvas id="game" width="960" height="540"></canvas>
       <div class="scanlines" aria-hidden="true"></div>
@@ -109,18 +115,19 @@
         <button data-k="p">P</button>
         <button data-k="k">K</button>
         <button data-k="block">BLK</button>
+        <button data-k="th" class="thb">THR</button>
         <button data-k="sp" class="spb">SP</button>
       </div>
     </div>
     <div class="keys-line" id="keysSolo" aria-label="Controls">
       <span><kbd>A</kbd><kbd>D</kbd> move</span><span><kbd>W</kbd> jump</span><span><kbd>S</kbd> crouch</span>
       <span><kbd>L-CLICK</kbd> punch</span><span><kbd>R-CLICK</kbd> kick</span><span><kbd>SPACE</kbd> block · tap to parry</span>
-      <span><kbd>SPACE</kbd>+<kbd>L-CLICK</kbd> throw</span><span><kbd>E</kbd>/<kbd>MID-CLICK</kbd> special</span><span><kbd>ESC</kbd> menu</span>
+      <span><kbd>Q</kbd> throw</span><span><kbd>E</kbd>/<kbd>MID-CLICK</kbd> special</span><span><kbd>ESC</kbd> menu</span>
     </div>
     <div class="keys-line local" id="keysLocal" aria-label="Local versus controls" hidden>
-      <span class="who">P1</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> kick</span><span><kbd>T</kbd> block</span><span><kbd>H</kbd> special</span>
+      <span class="who">P1</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> kick</span><span><kbd>T</kbd> block</span><span><kbd>H</kbd> special</span><span><kbd>R</kbd> throw</span>
       <span class="sep"></span>
-      <span class="who p2">P2</span><span><kbd>←↑↓→</kbd> move</span><span><kbd>,</kbd>/<kbd>NUM1</kbd> punch</span><span><kbd>.</kbd>/<kbd>NUM2</kbd> kick</span><span><kbd>R-SHIFT</kbd>/<kbd>NUM0</kbd> block</span><span><kbd>/</kbd>/<kbd>NUM3</kbd> special</span>
+      <span class="who p2">P2</span><span><kbd>←↑↓→</kbd> move</span><span><kbd>,</kbd>/<kbd>NUM1</kbd> punch</span><span><kbd>.</kbd>/<kbd>NUM2</kbd> kick</span><span><kbd>R-SHIFT</kbd>/<kbd>NUM0</kbd> block</span><span><kbd>/</kbd>/<kbd>NUM3</kbd> special</span><span><kbd>'</kbd>/<kbd>NUM4</kbd> throw</span>
       <span class="sep"></span><span>Gamepads work too: pad 1 is P1, pad 2 is P2</span>
     </div>
   </div>
@@ -169,10 +176,11 @@
           <tr class="solo"><td>Punch</td><td><kbd>L-CLICK</kbd> or <kbd>J</kbd></td></tr>
           <tr class="solo"><td>Kick</td><td><kbd>R-CLICK</kbd> or <kbd>K</kbd></td></tr>
           <tr class="solo"><td>Block</td><td>Hold <kbd>SPACE</kbd>. Hold <kbd>S</kbd> too for lows.</td></tr>
+          <tr class="solo"><td>Throw</td><td><kbd>Q</kbd> up close. Beats blocking.</td></tr>
           <tr class="solo"><td>Special</td><td><kbd>E</kbd>, <kbd>L</kbd> or <kbd>MID-CLICK</kbd> when the meter is full. Hold to charge.</td></tr>
-          <tr class="local"><td>Player 1</td><td><kbd>WASD</kbd> move · <kbd>F</kbd> punch · <kbd>G</kbd> kick · <kbd>T</kbd> block · <kbd>H</kbd> special</td></tr>
-          <tr class="local"><td>Player 2</td><td>Arrows move · <kbd>,</kbd> punch · <kbd>.</kbd> kick · <kbd>R-SHIFT</kbd> block · <kbd>/</kbd> special (or numpad 1/2/0/3)</td></tr>
-          <tr><td>Gamepad</td><td>X punch · A kick · B or bumpers block · Y special · Start for the menu</td></tr>
+          <tr class="local"><td>Player 1</td><td><kbd>WASD</kbd> move · <kbd>F</kbd> punch · <kbd>G</kbd> kick · <kbd>T</kbd> block · <kbd>H</kbd> special · <kbd>R</kbd> throw</td></tr>
+          <tr class="local"><td>Player 2</td><td>Arrows move · <kbd>,</kbd> punch · <kbd>.</kbd> kick · <kbd>R-SHIFT</kbd> block · <kbd>/</kbd> special · <kbd>'</kbd> throw (or numpad 1/2/0/3/4)</td></tr>
+          <tr><td>Gamepad</td><td>X punch · A kick · B / LB block · RB throw · Y special · Start for the menu</td></tr>
           <tr><td>Menu</td><td><kbd>ESC</kbd></td></tr>
         </table>
       </section>
@@ -186,7 +194,7 @@
           <tr><td>Lunge Kick</td><td>Toward + Kick</td></tr>
           <tr><td>Low Jab › Sweep</td><td>Down + Punch, Down + Kick</td></tr>
           <tr><td>Dive Kick</td><td>In the air: Down + Kick. Block it standing.</td></tr>
-          <tr><td>Throw</td><td>Block + Punch up close. Beats blocking.</td></tr>
+          <tr><td>Throw</td><td>Q up close (P1 local: R, P2 local: ' ). Beats blocking.</td></tr>
           <tr><td>Dash attack</td><td>Attack during a dash</td></tr>
         </table>
       </section>
@@ -249,6 +257,7 @@
 <script src="js/scene.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/game.js"></script>
+<script src="js/specials.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="js/online.js"></script>
 <script src="js/main.js"></script>
