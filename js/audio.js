@@ -124,6 +124,7 @@ function sfx(name){
     case 'sp_flurry': for(let i=0;i<9;i++){ nz(t+i*0.075,0.03,0.35,3500,d); tone('square',900+(i%3)*240,t+i*0.075,0.03,0.15,d); } break;
     case 'sp_timeStop': tone('sine',880,t,1.0,0.3,d,110); tone('triangle',440,t+0.05,1.0,0.2,d,55); [0,0.25,0.5].forEach(o=>tone('square',1760,t+o,0.04,0.2,d)); break;
     case 'sp_ratioDrop': for(let i=0;i<3;i++){ tone('sawtooth',1200,t+i*0.27,0.25,0.18,d,150); } nz(t,0.5,0.2,1200,d); break;
+    case 'jab': nz(t,0.05,0.18,2400,d); break;
     case 'sp_rugPull': tone('sawtooth',600,t,0.5,0.3,d,40); nz(t,0.4,0.4,300,d); break;
     case 'announce': tone('square',196,t,0.18,0.18,d); tone('square',294,t+0.02,0.18,0.12,d); nz(t,0.05,0.15,3000,d); break;
     case 'win': [523,659,784,1046].forEach((f,i)=>tone('square',f,t+i*0.12,0.2,0.25,d)); break;

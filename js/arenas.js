@@ -544,9 +544,9 @@ function bake(fn){
 // optional art override: drop img/arenas/<id>.png (any 16:9 size) next to index.html and it replaces the procedural scene
 const override={};
 function loadOverride(id){ if(id in override) return; override[id]=null; if(!(DD.ARENA_ART||[]).includes(id)) return; const im=new Image(); im.onload=()=>{ override[id]=im; }; im.onerror=()=>{}; im.src='img/arenas/'+id+'.png'; }
-function render(id){ loadOverride(id); return override[id] || cache[id] || (cache[id]=bake(DRAW[id]||DRAW.floor)); }
-function renderFG(id){ if(override[id]) return null; if(!(id in fgCache)) fgCache[id]= FG[id] ? bake(FG[id]) : null; return fgCache[id]; }
-function draw(ctx,id,t){ const s=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(render(id),0,0,AW,AH); ctx.imageSmoothingEnabled=s; if(ANIM[id]&&!override[id]) ANIM[id](ctx,t); }
+function render(id){ loadOverride(id); const X=DD.ARENA_DRAW||{}; return override[id] || cache[id] || (cache[id]=bake(X[id]||DRAW[id]||DRAW.floor)); }
+function renderFG(id){ if(override[id]) return null; const XF=DD.ARENA_FG||{}; const fn = (id in XF) ? XF[id] : FG[id]; if(!(id in fgCache)) fgCache[id]= fn ? bake(fn) : null; return fgCache[id]; }
+function draw(ctx,id,t){ const s=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(render(id),0,0,AW,AH); ctx.imageSmoothingEnabled=s; const XA=DD.ARENA_ANIM||{}, an=(id in XA)?XA[id]:ANIM[id]; if(an&&!override[id]) an(ctx,t); }
 function drawFG(ctx,id){ const cv=renderFG(id); if(cv){ const s=ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled=false; ctx.drawImage(cv,0,0,AW,AH); ctx.imageSmoothingEnabled=s; } }
 // preview: full scene + foreground, box-filtered down to card size so the dither averages into clean colour (no moiré)
 function thumb(id){ const s=document.createElement('canvas'); s.width=AW; s.height=AH; const c=s.getContext('2d'); c.imageSmoothingEnabled=false;
@@ -556,5 +556,5 @@ function thumb(id){ const s=document.createElement('canvas'); s.width=AW; s.heig
 function clearCache(){ for(const k in cache) delete cache[k]; for(const k in fgCache) delete fgCache[k]; }
 
 DD.Arenas = { draw, drawFG, thumb, render, clearCache, AW, AH, FLOOR };
-DD.Pix = { R, circ, poly, glow, vgrad, cloud, ridge, skyline, stars, texture, dither, retro, rnd, fbm, shade, txt, canopy, rock, trunk };
+DD.Pix = { R, circ, poly, glow, vgrad, cloud, ridge, skyline, stars, texture, dither, retro, rnd, fbm, shade, txt, canopy, rock, trunk, palace, contact, vignette, reflect, floorPersp, person, bricks, cloud2:cloud, mix, hash };
 })();

@@ -1,24 +1,24 @@
 /* DEGEN DOJO — fight engine */
 (function(){
 const AW=480, AH=270, FLOOR=232, WALL_L=18, WALL_R=462;
-const SC=2, GRAV=0.62, MAXHP=1000, ROUND_TIME=60, WINS_NEEDED=2, WAKE_INV=14;
+const SC=2, GRAV=0.62, MAXHP=1000, ROUND_TIME=60, WINS_NEEDED=2, WAKE_INV=14, KD_TIME=24;
 const A = ()=>DD.Audio;
 const SPX = ()=>DD.Specials||{update:{},pose:{},fx:{},under:{},proj:{},zone:{},drawFighter:{},tick(){},drawBeam(){return false;},RANGED:[],SELF:[]};
 
 // attack table (frames @60fps)
 const ATK = {
   // ground punches: jab -> straight -> uppercut chain
-  P:  {name:'Jab',      su:4, ac:3, re:8,  dmg:40, x0:6, x1:30, y0:-48, y1:-34, h:'high', kb:2,   hs:14, pose:'punch', chain:{p:'P2',k:'K'}},
-  P2: {name:'Straight', su:5, ac:3, re:11, dmg:48, x0:6, x1:34, y0:-48, y1:-34, h:'high', kb:2.6, hs:16, pose:'punch', step:1.6, chain:{p:'P3',k:'K2'}},
-  P3: {name:'Uppercut', su:6, ac:4, re:20, dmg:62, x0:2, x1:26, y0:-72, y1:-20, h:'mid',  kb:1.6, hs:24, pose:'upper', launch:1, heavy:1},
+  P:  {name:'Jab',      su:3, ac:3, re:7,  dmg:38, x0:6, x1:32, y0:-50, y1:-32, h:'high', kb:1.4, hs:13, pose:'punch', step:0.9, light:1, chain:{p:'P2',k:'K'}},
+  P2: {name:'Straight', su:4, ac:3, re:9,  dmg:46, x0:6, x1:36, y0:-50, y1:-32, h:'high', kb:1.8, hs:15, pose:'punch', step:1.8, light:1, chain:{p:'P3',k:'K2'}},
+  P3: {name:'Uppercut', su:5, ac:4, re:17, dmg:62, x0:2, x1:26, y0:-72, y1:-20, h:'mid',  kb:1.6, hs:24, pose:'upper', launch:1, heavy:1},
   FP: {name:'Overhead', su:13,ac:4, re:16, dmg:80, x0:8, x1:34, y0:-58, y1:-18, h:'overhead', kb:4, hs:20, pose:'heavy', step:2.6, heavy:1},
   BP: {name:'Anti-Air', su:5, ac:6, re:18, dmg:60, x0:0, x1:26, y0:-84, y1:-36, h:'high', kb:2,   hs:20, pose:'upper', aa:1},
   // kicks
-  K:  {name:'Kick',     su:7, ac:4, re:13, dmg:62, x0:6, x1:36, y0:-38, y1:-22, h:'mid',  kb:3,   hs:18, pose:'kick',  chain:{k:'K2',p:'P2'}},
+  K:  {name:'Kick',     su:6, ac:4, re:12, dmg:62, x0:6, x1:36, y0:-38, y1:-22, h:'mid',  kb:3,   hs:18, pose:'kick',  chain:{k:'K2',p:'P2'}},
   K2: {name:'Roundhouse',su:9,ac:5, re:18, dmg:80, x0:6, x1:38, y0:-54, y1:-30, h:'high', kb:6,   hs:22, pose:'round', heavy:1},
   FK: {name:'Lunge Kick',su:9,ac:5, re:16, dmg:70, x0:6, x1:34, y0:-30, y1:-12, h:'mid',  kb:4,   hs:18, pose:'lunge', step:4.6, heavy:1},
   // lows
-  cP: {name:'Low Jab',  su:4, ac:3, re:10, dmg:32, x0:6, x1:30, y0:-30, y1:-18, h:'low',  kb:1.8, hs:13, pose:'cpunch', chain:{p:'cP',k:'cK'}},
+  cP: {name:'Low Jab',  su:3, ac:3, re:8, light:1, dmg:32, x0:6, x1:30, y0:-30, y1:-18, h:'low',  kb:1.8, hs:13, pose:'cpunch', chain:{p:'cP',k:'cK'}},
   cK: {name:'Sweep',    su:8, ac:4, re:20, dmg:55, x0:6, x1:38, y0:-10, y1:0,   h:'low',  kb:2.5, hs:16, pose:'ckick', kd:1, heavy:1},
   // air
   jP: {name:'Air Punch',su:3, ac:8, re:4,  dmg:50, x0:2, x1:26, y0:-44, y1:-20, h:'air',  kb:2.5, hs:16, pose:'jpunch', air:1},
@@ -39,7 +39,7 @@ class Fighter {
     this.x = this.side===0 ? 130 : 350; this.y=FLOOR; this.vx=0; this.vy=0; this.face=this.side===0?1:-1;
     this.hp=MAXHP; this.meter=0; this.state='idle'; this.t=0; this.atk=null; this.atkHit=false;
     this.stun=0; this.invuln=0; this.flash=0; this.hist=[];
-    this.armor=0; this.reflect=0; this.healT=0; this.poison=0; this.slow=0; this.timeSlow=0; this.shellT=0; this.root=0;
+    this.armor=0; this.reflect=0; this.healT=0; this.poison=0; this.slow=0; this.timeSlow=0; this.shellT=0; this.root=0; this.kdCount=0; this.lastKd=-999; this.quick=0; this.rollDir=0; this.hitPush=0;
     this.buff={dmg:0,spd:0,steal:0,plot:0};
     this.sp=null; this.hidden=false; this.landLag=0; this.tap={l:-99,r:-99}; this.frame=0;
     this.prev={}; this.inp={};
@@ -47,7 +47,7 @@ class Fighter {
   }
   get grounded(){ return this.y>=FLOOR-0.01; }
   get crouching(){ return this.state==='crouch'||this.state==='cblock'||(this.state==='attack'&&this.atk&&(this.atk.key==='cP'||this.atk.key==='cK')); }
-  hurt(){ const s=this.size, top = this.state==='kd'||this.state==='ko' ? -12 : (this.crouching? -36 : -54); return {x0:this.x-11*s, x1:this.x+11*s, y0:this.y+top*s, y1:this.y}; }
+  hurt(){ const s=this.size, top = this.state==='kd'||this.state==='ko'||this.state==='roll' ? -12 : (this.crouching? -36 : -54); return {x0:this.x-11*s, x1:this.x+11*s, y0:this.y+top*s, y1:this.y}; }
   pressed(k){ return (this.inp[k] && !this.prev[k]) || !!(this.wb && this.wb[k]); }
   spdMul(){ return this.spec.stats.spd * (this.buff.spd>0?1.45:1) * (this.slow>0?0.55:1); }
   canAct(){ return ['idle','walk','crouch','block','cblock'].includes(this.state) && this.stun<=0; }
@@ -148,6 +148,7 @@ class Fight {
     f.frame++; f.t++;
     f.hist.push({x:f.x,y:f.y,hp:f.hp}); if(f.hist.length>120) f.hist.shift();
     for(const k in f.buff) if(f.buff[k]>0) f.buff[k]--;
+    if(f.hitPush>0){ f.hitPush--; }
     if(f.armor>0) f.armor--; if(f.invuln>0) f.invuln--; if(f.flash>0) f.flash--; if(f.slow>0) f.slow--;
     if(f.healT>0){ f.healT--; f.hp=Math.min(MAXHP,f.hp+1.2); if(f.healT%12===0) this.spark(f.x+rand(-10,10),f.y-100,'#3bff6a',2); }
     if(f.poison>0){ f.poison--; if(f.hp>1) f.hp=Math.max(1,f.hp-0.5); if(f.poison%10===0) this.spark(f.x+rand(-8,8),f.y-40,'#9bff3a',1); }
@@ -171,8 +172,9 @@ class Fight {
       case 'getup': {
         f.invuln=2; f.vx=0;
         for(const k of ['p','k','sp','up','block']) if(f.inp[k] && !f.prev[k]) (f.wb=f.wb||{})[k]=1; // buffer wake-up inputs
-        if(f.t<=14) break;
-        f.set('idle'); f.invuln=WAKE_INV; f.stun=0; f.landLag=0; // wake-up: short hit/throw immunity, then act this same frame
+        if(f.t<=(f.quick?5:9)) break;
+        f.set('idle'); f.invuln=WAKE_INV; f.stun=0; f.landLag=0;
+        if(f.kdCount>=3){ f.kdCount=0; this.wakeBurst(f,o); } // loop breaker // wake-up: short hit/throw immunity, then act this same frame
       } // falls through
       case 'idle': case 'walk': case 'crouch': case 'block': case 'cblock': {
         if(f.stun>0){ f.stun--; f.vx*=0.85; break; }
@@ -214,7 +216,16 @@ class Fight {
       case 'dizzy': { f.vx*=0.8; if(f.t%10===0) this.spark(f.x+rand(-10,10),f.y-118*f.size/2,'#ffd23f',1,0,-0.5); if(f.t>85){ f.set('idle'); } break; }
       case 'attack': this.updateAttack(f,o); break;
       case 'hit': { f.vx*=0.88; if(--f.stun<=0 && f.grounded){ f.stun=0; f.combo=0; f.set('idle'); } break; }
-      case 'kd': { f.vx*=0.85; f.invuln=2; f.combo=0; f.wb=null; f.stun=0; f.landLag=0; f.launched=false; if(f.t>48){ f.set('getup'); } break; }
+      case 'kd': { f.vx*=0.85; f.invuln=2; f.combo=0; f.stun=0; f.landLag=0; f.launched=false;
+        if(f.t===1){ f.wb=null; this.dust(f.x,f.y); this.dust(f.x-6,f.y); }
+        // tech: press a button to quick-rise, or hold left/right to roll that way. Do nothing = normal rise.
+        const tech = f.t>=6 && (f.pressed('p')||f.pressed('k')||f.pressed('block')||f.pressed('up')||f.pressed('th'));
+        const rollDir = f.t>=6 && (f.inp.left?-1:f.inp.right?1:0);
+        if(rollDir){ f.set('roll'); f.passThru=true; f.rollDir=rollDir; this.dust(f.x,f.y); this.snd('whoosh'); break; }
+        if(tech){ f.set('getup'); f.quick=1; this.pop(f.x,f.y-90,'TECH','#7fdcff'); this.snd('block'); break; }
+        if(f.t>KD_TIME){ f.set('getup'); f.quick=0; } break; }
+      case 'roll': { f.invuln=2; f.passThru=true; f.vx=f.rollDir*5.8; if(f.t%4===0) this.dust(f.x,f.y);
+        if(f.t>=20){ f.vx=0; f.passThru=false; this.side=0; f.set('getup'); f.quick=1; f.face=o.x>=f.x?1:-1; } break; }
       case 'special': this.updateSpecial(f,o); break;
     }
     if(f.state!=='getup') f.wb=null;
@@ -229,7 +240,7 @@ class Fight {
       if(f.vy>4 && f.state!=='kd' && f.state!=='ko'){ this.snd('land'); }
       f.y=FLOOR; f.vy=0; f.airUsed=false;
       if(f.state==='jump' || (f.state==='attack'&&f.atk&&f.atk.air)){ f.atk=null; f.airUsed=false; f.set('idle'); f.landLag=3; f.vx=0; }
-      if(f.state==='hit' && f.launched){ f.launched=false; f.set('kd'); }
+      if(f.state==='hit' && f.launched){ f.launched=false; f.set('kd'); const now=this.frame; f.kdCount = (now-(f.lastKd||-999)<360) ? (f.kdCount||0)+1 : 1; f.lastKd=now; }
     }
     const s=f.size; f.x=clamp(f.x, WALL_L+8*s, WALL_R-8*s);
   }
@@ -268,27 +279,27 @@ class Fight {
   // ---- normals ----
   startAttack(f,key){
     const a=ATK[key]; f.atk={...a,key}; f.atkHit=false; f.contact=false; f.buf=null; f.set('attack'); f.t=0;
-    if(!a.air) f.vx=0;
+    if(!a.air) f.vx*=0.35;
     if(a.dive){ f.vy=Math.max(f.vy,5.5); f.vx=f.face*4.2; }
     const m = f.buff.spd>0?0.7:1;
     f.atk.su=Math.max(2,Math.round(a.su*m)); f.atk.re=Math.max(3,Math.round(a.re*m));
-    this.snd('whoosh');
+    this.snd(a.light?'jab':'whoosh');
   }
   updateAttack(f,o){
     const a=f.atk; if(!a){ f.set('idle'); return; }
     const t=f.t, I=f.inp;
-    if(a.step && t<=a.su+a.ac) f.vx = f.face*a.step*(t>a.su-3?1:0.3); else if(!a.air) f.vx*=0.7;
+    if(a.step && t<=a.su+a.ac) f.vx = f.face*a.step*(t>=a.su-1?1:0.5); else if(!a.air) f.vx*=0.6;
     if(a.dive && f.grounded===false) { f.vy=Math.max(f.vy,5.5); }
     // input buffer for chains / special cancel
     if(t>2){ if(f.pressed('p')) f.buf='p'; else if(f.pressed('k')) f.buf='k'; else if(f.pressed('sp')) f.buf='sp'; }
     if(t>a.su && t<=a.su+a.ac && !f.atkHit){
       const box=this.box(f,a.x0,a.x1,a.y0,a.y1);
       if(this.overlap(box,o.hurt())){ f.atkHit=true; f.contact=true;
-        this.hit(f,o,{dmg:a.dmg,h:a.h,kb:a.kb,hs:a.hs,kd:a.kd,heavy:a.heavy,melee:true,launch:a.launch||(a.aa&&!o.grounded),name:a.name}); }
+        this.hit(f,o,{dmg:a.dmg,h:a.h,kb:a.kb,hs:a.hs,kd:a.kd,heavy:a.heavy,light:a.light,melee:true,launch:a.launch||(a.aa&&!o.grounded),name:a.name}); }
       for(const c of this.clones) if(c.owner!==f && this.overlap(box,{x0:c.x-20,x1:c.x+20,y0:c.y-100,y1:c.y})){ c.life=0; this.spark(c.x,c.y-60,'#fff',8); }
     }
     // chain / cancel on contact
-    if(f.contact && f.buf && t>a.su+a.ac && f.grounded){
+    if(f.contact && f.buf && t>=a.su+2 && f.grounded){
       if(f.buf==='sp' && f.meter>=100){ this.startSpecial(f,o); return; }
       const next = a.chain && a.chain[f.buf];
       if(next){ const dn=I.down; this.startAttack(f, (f.buf==='p'&&dn)?'cP':(f.buf==='k'&&dn)?'cK':next); return; }
@@ -302,7 +313,7 @@ class Fight {
   overlap(a,b){ return a.x0<b.x1 && a.x1>b.x0 && a.y0<b.y1 && a.y1>b.y0; }
 
   tryThrow(f,o){
-    const ok = Math.abs(o.x-f.x)<58 && o.grounded && f.grounded && !o.invuln && !o.hidden && !['hit','kd','getup','ko','special'].includes(o.state);
+    const ok = Math.abs(o.x-f.x)<58 && o.grounded && f.grounded && !o.invuln && !o.hidden && !['hit','kd','getup','roll','ko','special'].includes(o.state);
     f.sp={type: ok?'throw':'throwWhiff', t:0}; f.set('special'); f.vx=0; this.snd('whoosh');
     if(ok){ o.set('hit'); o.stun=60; o.sp=null; o.atk=null; o.vx=0; }
   }
@@ -369,7 +380,7 @@ class Fight {
       def.set('hit'); def.launched=true; def.stun=99; def.vy=opts.launch? -9 : -5.5; def.vx=dir*(opts.kb+1)*1.4;
     } else { def.set('hit'); def.stun=opts.hs; def.vx=dir*opts.kb*1.5; }
     this.cornerPush(att,def,dir,opts);
-    this.hitstop = opts.heavy? 7 : 5; this.shake = opts.heavy? 8 : 4;
+    this.hitstop = opts.heavy? 8 : opts.light? 3 : 4; this.shake = opts.heavy? 8 : opts.light? 1 : 3; def.hitPush=opts.heavy?6:3;
     const hx = def.x - dir*10, hy=def.y-(def.crouching?24:38)*def.size;
     this.spark(hx,hy,'#fff',6); this.spark(hx,hy,'#ff6a00',8);
     this.addFx({kind:'impact',x:hx,y:hy,life:9,max:9,big:!!opts.heavy});
@@ -378,6 +389,10 @@ class Fight {
     return true;
   }
 
+  wakeBurst(f,o){ // 3 knockdowns in a short span: wake up with a shockwave that shoves the attacker away
+    this.ring(f.x,f.y-50,'#7fdcff'); this.ring(f.x,f.y-50,'#ffffff'); this.shake=8; this.snd('parry'); this.pop(f.x,f.y-140,'BREAKER','#7fdcff');
+    for(let i=0;i<16;i++) this.fx.push({kind:'px',x:f.x,y:f.y-50,vx:rand(-4,4),vy:rand(-4,2),g:0.1,col:i%2?'#7fdcff':'#ffffff',life:20,s:3});
+    if(Math.abs(o.x-f.x)<110 && !o.invuln){ o.vx=(o.x>=f.x?1:-1)*8; o.stun=Math.max(o.stun,14); if(o.state!=='kd'&&o.state!=='ko'){ o.atk=null; o.sp=null; o.set('hit'); } } }
   cornerPush(att,def,dir,opts,blocked){
     if(!opts.melee || !att.grounded || !opts.kb) return;
     const room = dir>0 ? (WALL_R-8*def.size)-def.x : def.x-(WALL_L+8*def.size);
@@ -810,6 +825,7 @@ class Fight {
     switch(f.state){
       case 'walk': return ['walk',(t/6)|0];
       case 'crouch': case 'getup': return ['crouch',0];
+      case 'roll': return ['ball',(t/2)|0];
       case 'jump': return ['jump',0];
       case 'block': return ['block',0];
       case 'cblock': return ['cblock',0];
@@ -819,7 +835,7 @@ class Fight {
       case 'dash': return ['dash',0];
       case 'charge': return ['charge',(t/4)|0];
       case 'win': return ['win',(t/10)|0];
-      case 'attack': { const a=f.atk; if(!a) return ['idle',0]; const ph = t<=a.su?0 : t<=a.su+a.ac?1:2; return [a.pose, ph===1||(a.dive&&t>a.su)?1:0]; }
+      case 'attack': { const a=f.atk; if(!a) return ['idle',0]; const ph = t<=a.su?0 : t<=a.su+a.ac?1:2; return [a.pose, ph===1||(ph===2&&t<=a.su+a.ac+Math.ceil(a.re*0.45))||(a.dive&&t>a.su)?1:0]; }
       case 'special': {
         const ty=f.sp&&f.sp.type;
         { const PZ=SPX().pose[ty]; if(PZ){ const r=PZ(f,t); if(r) return r; } }
@@ -928,6 +944,7 @@ class CPU {
     const r=this._think(me,op,fight); if(!(me.guardLock>0) || !r || !r.block) return r;
     const o={...r}; delete o.block; if(!o.down){ o[me.face>0?'left':'right']=true; } return o; }
   _think(me,op,fight){
+    if(me.state==='kd'){ if(me.t===8 && Math.random()<this.L.parry+0.35){ const r=Math.random(); return r<0.35?{p:true}:r<0.7?{[op.x>me.x?'left':'right']:true}:{[op.x>me.x?'right':'left']:true}; } return {}; }
     const L=this.L, dx=op.x-me.x, dist=Math.abs(dx), toward=dx>0?'right':'left', away=dx>0?'left':'right';
     // run queued sequence first
     if(this.q.length){
