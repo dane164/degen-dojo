@@ -145,13 +145,13 @@
     <button class="ghost-btn off-only" data-act="title">QUIT TO TITLE</button>
     <button class="ghost-btn ol-only danger" data-act="forfeit">FORFEIT (COUNTS AS A LOSS)</button>
   </div>
-</div>>
+</div>
 
 <div class="overlay" id="resultOv" hidden>
   <div class="card result">
     <p class="kicker" id="resKicker">MATCH OVER</p>
     <h2 id="resTitle">YOU WIN</h2>
-    <img id="resImg" alt="" class="res-port">
+    <div class="res-hero" id="resHero"><img id="resImg" alt="" class="res-port"><b class="grade" id="resGrade" title="Match grade">S</b></div>
     <p id="resLine"></p>
     <p class="res-elo" id="resElo" hidden></p>
     <dl class="res-stats" id="resStats"></dl>
@@ -196,6 +196,8 @@
           <tr><td>Dive Kick</td><td>In the air: Down + Kick. Block it standing.</td></tr>
           <tr><td>Throw</td><td>Q up close (P1 local: R, P2 local: ' ). Beats blocking.</td></tr>
           <tr><td>Dash attack</td><td>Attack during a dash</td></tr>
+          <tr><td>FOMO cancel</td><td>After a hit or block connects, double-tap forward to dash out of it. Costs ¼ bar. Use it to extend combos.</td></tr>
+          <tr><td>MAX special</td><td>Meter holds 2 bars. At 2 bars, hold Block and press Special: 40% more damage.</td></tr>
         </table>
       </section>
     </div>
@@ -205,6 +207,7 @@
         <li><b>Block</b> takes a little chip damage and drains your blue guard bar. If it empties, you're dizzy and wide open.</li>
         <li><b>Parry</b>: tap block just before a hit lands. You take nothing, and the attacker's shield is locked for 1.5 seconds.</li>
         <li>Chains and specials cancel on hit or block. Combos scale damage down.</li>
+        <li><b>Counter hit</b>: tag them while they're starting an attack for 25% extra damage and a longer freeze.</li>
         <li><b>Knocked down?</b> Press any button to tech (quick rise), hold left/right to roll away or under them, or do nothing for a normal rise. You can't be hit while down or for a moment after standing.</li>
         <li><b>Breaker</b>: get knocked down 3 times in a few seconds and you wake up with a shockwave that shoves them off you.</li>
       </ul>

@@ -164,7 +164,13 @@ function endMatch(winIdx,fight){
   setResultButtons(local?'local':'cpu');
   setTimeout(()=>{ $('#resultOv').hidden=false; },500);
 }
+function grade(fight,i){ const s=fight.stats[i], me=fight.p[i], op=fight.p[1-i], won=me.wins>op.wins;
+  if(!won) return op.wins>0&&me.wins>0?'C':'D';
+  let g=0; if(op.wins===0) g++; if(s.maxCombo>=5) g++; if(s.parries>=2||s.hits>=20) g++; if(s.dmg>=1800) g++;
+  return g>=3?'S':g===2?'A':g===1?'B':'C'; }
 function fillStats(fight,i){ const s=fight.stats[i];
+  const gr=grade(fight,i), w=fight.p[fight.p[0].wins>=fight.p[1].wins?0:1], top=w.spec.top, hero=/^#f[0-9a-f]f[0-9a-f]f[0-9a-f]$/i.test(top)||top==='#ffffff'?'#ff6a00':top;
+  $('#resGrade').textContent=gr; $('#resGrade').className='grade g-'+gr; $('#resHero').style.setProperty('--hero',hero);
   $('#resStats').innerHTML=[['HITS',s.hits],['BEST COMBO',s.maxCombo],['DAMAGE',Math.round(s.dmg)],['BLOCKS',s.blocks],['PARRIES',s.parries],['ROUNDS',fight.p[0].wins+'-'+fight.p[1].wins]]
     .map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join(''); }
 function setResultButtons(kind){
@@ -466,7 +472,7 @@ function loop(now){
   if(O&&O.started&&!O.done){ const quiet=performance.now()-O.link.lastHeard; if(quiet>7000 || (O.byeAt&&performance.now()-O.byeAt>1500)) finishOnline(true,'DISCONNECT'); }
   if(st.screen==='title') drawTitle();
   if(st.screen==='game' && st.fight) st.fight.draw(gc);
-  DD.Sprites.warmTick(st.screen==='game'&&st.fight&&st.fight.phase==='fight'?3:8);
+  DD.Sprites.warmTick(st.screen==='game'&&st.fight&&st.fight.phase==='fight'?4:12);
   requestAnimationFrame(loop);
 }
 

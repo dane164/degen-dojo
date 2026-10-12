@@ -98,3 +98,30 @@ Prompt template for an image generator:
   - Supabase's free Realtime tier caps messages per second, but that only matters for relayed matches. Most matches go P2P.
 - **Test accounts:** four `zzTest*` accounts from my backend testing are hidden from the leaderboard. You can delete them in the Supabase dashboard (Table editor → `dd_players`).
 - **Where it works:** online play needs the real site (GitHub Pages / Vercel / any static host). The Claude artifact preview blocks outside network calls, so only CPU and local modes work there.
+
+## Sprite engine v2 (js/sprites.js)
+
+- Fighters are drawn by a cel-shaded rig at 4 backing px per sprite unit (`RES=4`), with IK knees/elbows and inked parts.
+- Each fighter's look comes from its `data.js` entry: `head`, `hair`, `eyes`, `outfit` (tee/tank/gi/hoodie/suit/vest/robe/space/wool), `idle` (boxer/cool/heavy/nervous/float/phone/bouncy/lazy/typing/cocky) and `win` (fist/flex/arms/cross/point/laugh/bow/sit/float/phone).
+- Animations are keyframed. Attacks have 7 frames: 0 windup, 1 impact, 2 anticipation, 3 smear, 4 overshoot, 5–6 recover. `game.js` `poseFor()` picks the frame from the attack's startup/active/recovery timing.
+- Frames are cached (LRU, 420) and pre-warmed in spare frame time after a fighter is picked.
+
+### Dropping in hand-made sprite sheets
+
+Any fighter can be swapped for real art, one at a time, without touching the code that runs the fight:
+
+```js
+DD.SPRITE_ART = {
+  shiba: {
+    src: 'img/fighters/shiba.png',   // one PNG, one row per animation
+    cell: [128, 128],                // px per frame
+    anchor: [64, 124],               // foot point inside a cell (px)
+    height: 110,                     // px from feet to top of head (scales art to the cast height)
+    smooth: false,                   // true for painted/HD art, false for pixel art
+    anims: { idle:{row:0,n:8}, walk:{row:1,n:8}, jab:{row:2,n:7}, punch:{row:3,n:7}, kick:{row:4,n:7},
+             block:{row:5,n:1}, hit:{row:6,n:2}, kd:{row:7,n:2}, win:{row:8,n:8} }
+  }
+};
+```
+
+Any pose not listed in `anims` falls back to the procedural rig. Attack rows should follow the 7-frame order above.
