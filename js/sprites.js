@@ -652,7 +652,7 @@ function idleAtlas(){ const d=DD.SPRITE_IDLE; if(!d) return null;
   if(!IDLE){ IDLE={img:new Image(),ok:false}; IDLE.img.onload=()=>{ IDLE.ok=true; artNotify(null); }; IDLE.img.src=d.src; }
   return IDLE.ok?IDLE:null; }
 function cut(img,sx,sy,d,alt){
-  const [cw,ch]=d.cell, scale=d.unit?RES/d.unit:(56*RES)/(d.height||ch);
+  const [cw,ch]=d.cell, scale=(d.unit?RES/d.unit:(56*RES)/(d.height||ch))*(d.zoom||1);
   const cv=document.createElement('canvas'); cv.width=Math.round(cw*scale); cv.height=Math.round(ch*scale);
   const c=cv.getContext('2d'); c.imageSmoothingEnabled=!!d.smooth; c.drawImage(img,sx,sy,cw,ch,0,0,cv.width,cv.height);
   if(alt){ try{ const o=finish(cv,true,0,0,true); c.clearRect(0,0,cv.width,cv.height); c.drawImage(o,0,0); }catch(e){ c.filter='hue-rotate(150deg)'; c.globalCompositeOperation='copy'; c.drawImage(cv,0,0); c.filter='none'; c.globalCompositeOperation='source-over'; } }
