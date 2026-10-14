@@ -48,7 +48,7 @@ function drawTitle(){
   tc.drawImage(titleStage,0,0);
   lineup.forEach((s,i)=>{
     const x=60+i*60, y=238+(i===3?2:0), cv=DD.Sprites.get(s,'idle',((tf/22)|0)+i,false,false);
-    const sc=(i===3?1.6:1.3)/DD.Sprites.RES, dir=i<=3?1:-1;
+    const sc=1/DD.Sprites.RES, dir=i<=3?1:-1; // 1 art pixel = 1 screen pixel: crisp, no uneven pixels
     tc.fillStyle='rgba(43,20,5,.35)'; tc.beginPath(); tc.ellipse(x,y+1,14*sc*DD.Sprites.RES,3,0,0,7); tc.fill();
     tc.save(); tc.translate(x,y); tc.scale(dir*sc,sc); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
   });

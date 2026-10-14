@@ -255,7 +255,7 @@ class Fight {
   pushApart(){
     const [a,b]=this.p;
     if(a.hidden||b.hidden||a.state==='ko'||b.state==='ko'||a.passThru||b.passThru) return;
-    const dx=b.x-a.x, dy=Math.abs(a.y-b.y); let min=18*((a.size+b.size)/2);
+    const dx=b.x-a.x, dy=Math.abs(a.y-b.y); let min=22*((a.size+b.size)/2);
     const aAir0=!a.grounded, bAir0=!b.grounded;
     if(aAir0!==bAir0){ // one jumper vs one grounded: small air pushbox, and a jumper heading across sails over
       const jm=aAir0?a:b, gr=aAir0?b:a, toward=Math.sign(gr.x-jm.x);
@@ -751,7 +751,7 @@ class Fight {
     panel(true,ca,sl); panel(false,cb,sl2);
     ctx.fillStyle='#ffd23f'; ctx.save(); ctx.beginPath(); ctx.moveTo(cut+30,-10); ctx.lineTo(cut+34,-10); ctx.lineTo(cut-26,AH+10); ctx.lineTo(cut-30,AH+10); ctx.closePath(); ctx.globalAlpha=Math.min(sl,sl2); ctx.fill(); ctx.restore();
     // fighters
-    const draw=(f,left,k)=>{ const cv=DD.Sprites.get(f.spec,'win',(t/6)|0,f.alt,t<34&&t>30), s=1.7/DD.Sprites.RES*2, x=left?120-(1-k)*260:AW-120+(1-k)*260;
+    const draw=(f,left,k)=>{ const cv=DD.Sprites.get(f.spec,'win',(t/6)|0,f.alt,t<34&&t>30), s=3/DD.Sprites.RES, x=left?120-(1-k)*260:AW-120+(1-k)*260;
       ctx.save(); ctx.translate(x,AH+40); ctx.scale((left?1:-1)*s,s); ctx.drawImage(cv,-cv._ox,-cv._oy); ctx.restore(); };
     draw(a,true,ease((t-4)/24)); draw(b,false,ease((t-10)/24));
     // names
@@ -829,7 +829,7 @@ class Fight {
     const g=ctx.createLinearGradient(0,0,AW,0); g.addColorStop(0,'#2b1405'); g.addColorStop(left?0.35:0.65,f.spec.top==='#ffffff'||f.spec.top==='#f2f2f2'?'#ff6a00':f.spec.top); g.addColorStop(1,'#2b1405');
     ctx.fillStyle=g; ctx.fillRect(0,y,AW,h);
     ctx.fillStyle='rgba(255,255,255,0.18)'; for(let i=0;i<14;i++){ const ly=y+4+((i*37)%(h-8)), lx=((i*91 + t*(left?-22:22))%(AW+120)+AW+120)%(AW+120)-60; ctx.fillRect(lx,ly,60+((i*13)%50),1.5); }
-    const cv=DD.Sprites.get(f.spec,'win',0,f.alt,false), k=1.9/DD.Sprites.RES, px=left?92:AW-92;
+    const cv=DD.Sprites.get(f.spec,'win',0,f.alt,false), k=2/DD.Sprites.RES, px=left?92:AW-92;
     ctx.save(); ctx.translate(px,y+h+70); ctx.scale((left?1:-1)*k,k); ctx.drawImage(cv,-cv._ox,-cv._oy); ctx.restore();
     ctx.restore();
     ctx.fillStyle='#ffd23f'; ctx.fillRect(0,y+h-2,AW,2); ctx.fillRect(0,y,AW,2);
