@@ -69,6 +69,9 @@ $('#backTitle').onclick=()=>quitToTitle();
 // ---------- select ----------
 const port={}; function P(s,pose){ const k=s.id+(pose||''); return port[k]||(port[k]=DD.Sprites.portrait(s,2,pose||'idle')); }
 const PORT_SMALL={}; function PS(s){ return PORT_SMALL[s.id]||(PORT_SMALL[s.id]=DD.Sprites.portrait(s,1)); }
+// fighter art sheets stream in: drop cached portraits and redraw the menus when they land
+let artRedraw=0; addEventListener('dd:art',()=>{ for(const k in port) delete port[k]; for(const k in PORT_SMALL) delete PORT_SMALL[k];
+  clearTimeout(artRedraw); artRedraw=setTimeout(()=>{ $$('#fighterGrid .tile[data-i]').forEach(t=>{ const im=t.querySelector('img'); if(im) im.src=PS(F[+t.dataset.i]); }); if(st.screen==='select') renderSelect(); },120); });
 function buildGrids(){
   const g=$('#fighterGrid'); g.innerHTML='';
   F.forEach((s,i)=>{ const b=document.createElement('button'); b.className='tile'; b.dataset.i=i; b.innerHTML=`<img src="${PS(s)}" alt=""><span class="nm">${s.name}</span>`;
@@ -343,15 +346,14 @@ async function finishOnline(won, reason){
   }
   $('#resElo').textContent='Result is still pending. It will settle automatically.';
 }
-// ---------- match chat (ranked only): link blocker, slur mask, rate limit ----------
+// ---------- match chat (ranked only): link blocker + rate limit ----------
 const Chat=(()=>{
   const LINK=/(https?:\/\/|www\.|\b[a-z0-9-]{2,}\s*(\.|\(dot\)|\[dot\]|\sdot\s)\s*(com|net|org|io|xyz|gg|me|app|co|ly|fun|lol|site|link|info|top|vip|pro|tv|to|sh|so|dev|ai|club|biz|live|tech|online|store|finance|money|exchange|trade|cash|claim|airdrop|ru|cn|in|us|uk)\b|t\.me\/|discord\.(gg|com)|\b0x[a-f0-9]{6,})/ig;
   const B58=/\b[1-9A-HJ-NP-Za-km-z]{30,48}\b/g;
-  const SLUR=/\S*(?:n+[i1!]+g+[g9]+|f+[a4@]+g+[g9]*[o0]+t|\bf+[a4@]+g+s?\b|k+[i1]+k+[e3]|c+h+[i1]+n+k|t+r+[a4]+n+n+y|r+[e3]+t+[a4]+r+d|w+[e3]+t+b+[a4]+c+k|\bs+p+[i1]+c+k?\b|b+[e3]+[a4]+n+[e3]+r|\bk+y+s+\b)\S*/ig;
   let sent=[], muted=false, lastTxt='';
   const box=()=>$('#chatBox');
   function clean(t){ t=String(t||'').replace(/[\u0000-\u001f\u200b-\u200f\u202a-\u202e]/g,'').replace(/\s+/g,' ').trim().slice(0,80);
-    t=t.replace(LINK,'[link removed]').replace(B58,'[link removed]').replace(/(\[link removed\]\s*)+/g,'[link removed] ').trim().replace(SLUR,m=>'*'.repeat(m.length)); return t; }
+    t=t.replace(LINK,'[link removed]').replace(B58,'[link removed]').replace(/(\[link removed\]\s*)+/g,'[link removed] ').trim(); return t; }
   function add(cls,who,text){ const log=$('#chatLog'); if(!log) return; const d=document.createElement('div'); d.className='m '+cls; if(who){ const b=document.createElement('b'); b.textContent=who; d.appendChild(b); } d.appendChild(document.createTextNode(text)); log.appendChild(d);
     while(log.children.length>60) log.firstChild.remove(); log.scrollTop=log.scrollHeight; }
   function canSend(){ const now=performance.now(); sent=sent.filter(x=>now-x<10000); if(sent.length>=5) return 'Slow down. Max 5 messages per 10s.'; if(sent.length && now-sent[sent.length-1]<1200) return 'Slow down.'; return ''; }
@@ -363,13 +365,14 @@ const Chat=(()=>{
   function recv(m){ const now=performance.now(); rx=rx.filter(x=>now-x<10000); if(rx.length>=6) return; rx.push(now); // their client may be modified: re-filter and re-limit here
     const t=clean(m&&m.m); if(!t||muted) return; const O=st.online; add('op',(O&&O.info&&O.info.opponent.name||'OPP').toUpperCase(),t); if(document.activeElement!==$('#chatInput')) Au.sfx('select'); }
   function open(oppName){ box().hidden=false; $('#screen-game').classList.add('with-chat'); $('#chatLog').innerHTML=''; sent=[]; rx=[]; lastTxt=''; muted=false; $('#chatMute').classList.remove('on'); $('#chatMute').textContent='MUTE';
-    add('sys','',`Chatting with ${oppName}. Links and slurs are blocked.`); layout(); }
+    add('sys','',`Chatting with ${oppName}. Links are blocked.`); layout(); }
   function close(){ if(box()) box().hidden=true; $('#screen-game').classList.remove('with-chat'); if(document.activeElement===$('#chatInput')) $('#chatInput').blur(); }
   function layout(){ const b=box(); if(!b||b.hidden) return; const cb=$('#canvasBox').getBoundingClientRect(); b.style.setProperty('--chatH',Math.round(cb.height)+'px'); const below=innerWidth<1180; b.classList.toggle('below', below); $('#screen-game').classList.toggle('with-chat', !below); requestAnimationFrame(()=>{ const c2=$('#canvasBox').getBoundingClientRect(); b.style.setProperty('--chatH',Math.round(c2.height)+'px'); }); }
-  $('#chatForm').addEventListener('submit',e=>{ e.preventDefault(); const i=$('#chatInput'); send(i.value); i.value=''; });
+  $('#chatForm').addEventListener('submit',e=>{ e.preventDefault(); const i=$('#chatInput'); if(i.value.trim()) send(i.value); i.value=''; i.blur(); }); // Enter sends and drops you straight back into the fight
   $$('#chatQuick button').forEach(b=>b.onclick=()=>send(b.textContent));
   $('#chatMute').onclick=()=>{ muted=!muted; $('#chatMute').classList.toggle('on',muted); $('#chatMute').textContent=muted?'MUTED':'MUTE'; add('sys','',muted?'Opponent muted.':'Opponent unmuted.'); };
-  $('#chatInput').addEventListener('focus',()=>resetInput());
+  $('#chatInput').addEventListener('focus',()=>{ resetInput(); box().classList.add('typing'); });
+  $('#chatInput').addEventListener('blur',()=>box().classList.remove('typing'));
   $('#chatInput').addEventListener('keydown',e=>{ e.stopPropagation(); if(e.code==='Escape'){ e.preventDefault(); e.target.blur(); } });
   $('#chatInput').addEventListener('keyup',e=>e.stopPropagation());
   addEventListener('resize',layout);
@@ -395,7 +398,7 @@ document.addEventListener('keydown',e=>{
   if(!$('#queueOv').hidden){ if(e.code==='Escape'&&st.q) cancelQueue(); return; }
   if(e.target && e.target.id==='chatInput') return;
   if(st.screen==='game'){
-    if(e.code==='Enter' && Chat.isOpen()){ e.preventDefault(); resetInput(); $('#chatInput').focus(); return; }
+    if((e.code==='Enter'||e.code==='NumpadEnter') && Chat.isOpen()){ e.preventDefault(); resetInput(); $('#chatInput').focus(); return; }
     if(e.code==='Escape'||(e.code==='KeyP'&&st.mode!=='local')){ if(st.fight&&!st.fight.over) pauseGame($('#pauseOv').hidden); e.preventDefault(); return; }
     const t=keyTarget(e.code); if(t){ kb[t[0]][t[1]]=true; e.preventDefault(); }
     return;

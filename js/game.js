@@ -1003,7 +1003,7 @@ function lifeBar(ctx,x,y,w,f,rev,fr){
   ctx.fillStyle='rgba(255,255,255,0.45)'; poly(ctx,P(0,v*w,y+1,2));
   ctx.fillStyle='rgba(26,11,2,0.35)'; for(let i=1;i<10;i++){ const xx=rev?x+w-w*i/10:x+w*i/10; ctx.fillRect(xx-0.5,y+h-4,1,4); }
 }
-const BADGE={};
+const BADGE={}; addEventListener('dd:art',()=>{ for(const k in BADGE) delete BADGE[k]; });
 function headBadge(ctx,x,y,f,rev,fr){
   const k=f.spec.id+(f.alt?'a':''); let hb=BADGE[k];
   if(!hb){ const cv=DD.Sprites.get(f.spec,'idle',0,f.alt,false); hb=document.createElement('canvas'); hb.width=72; hb.height=72; const c=hb.getContext('2d');

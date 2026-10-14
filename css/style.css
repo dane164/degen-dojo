@@ -329,3 +329,5 @@ button:focus-visible,.tile:focus-visible,.atile:focus-visible{outline:3px solid 
 .chat-form input{flex:1;min-width:0;font-family:var(--body);font-size:18px;border:2px solid var(--card-line);border-radius:10px;padding:5px 8px;background:#fff;color:var(--ink)}
 .chat-form input:focus{outline:none;border-color:var(--or)}
 .chat-form button{font-family:var(--pixel);font-size:10px;border:0;border-radius:10px;background:var(--or);color:#fff;padding:0 12px;cursor:pointer}
+
+.chat.typing{box-shadow:0 0 0 3px #ffd23f,0 0 18px rgba(255,210,63,.45)}

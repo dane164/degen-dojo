@@ -3,13 +3,14 @@
    expressive heads, secondary motion, and an importer for hand-made sprite sheets (DD.SPRITE_ART). */
 (function(){
 const W=96, H=104, OX=48, OY=98, RES=4;         // logical box (sprite units), foot origin, backing px per unit
-const INK='#1a0b02', LW=0.95;                    // part outline colour + width (units)
+const INK='#1a0b02', LW=0.95; let INKL=INK; // INKL = part outline ink (bake mode marks it magenta so the baker can tell lines from features)                    // part outline colour + width (units)
 const cache=new Map();
 const TAU=Math.PI*2;
 
 // ---------- colour ----------
 function shade(hex,f){
-  const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  let h=hex.slice(1); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const n=parseInt(h,16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255;
   if(f>1){ const k=f-1; r+=(255-r)*k*0.55; g+=(255-g)*k*0.55; b+=(255-b)*k*0.55; } else { r*=f; g*=f; b*=f*1.04; }
   r=Math.max(0,Math.min(255,Math.round(r))); g=Math.max(0,Math.min(255,Math.round(g))); b=Math.max(0,Math.min(255,Math.round(b)));
   return '#'+((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
@@ -30,12 +31,14 @@ function ik(a,b,L1,L2,side){
 
 // ---------- drawing primitives (sprite units; origin = feet) ----------
 let C=null; // current ctx
+let SOFT=false; // bake mode: flat fills + ink only, lighting added later by the pixel-art baker
 const X=x=>OX+x, Y=y=>OY+y;
 function strokeSeg(a,b,w,col){ C.strokeStyle=col; C.lineWidth=w; C.beginPath(); C.moveTo(X(a[0]),Y(a[1])); C.lineTo(X(b[0]),Y(b[1])); C.stroke(); }
 // limb: list of segments [{a,b,w}], one colour, inked, cel-shaded, no creases at joints
 function limb(segs,col){
   C.lineCap='round'; C.lineJoin='round';
-  for(const s of segs) strokeSeg(s.a,s.b,s.w+LW*2,INK);
+  for(const s of segs) strokeSeg(s.a,s.b,s.w+LW*2,INKL);
+  if(SOFT){ for(const s of segs) strokeSeg(s.a,s.b,s.w,col); return; }
   for(const s of segs) strokeSeg(s.a,s.b,s.w,shade(col,SH));
   for(const s of segs){ const o=s.w*0.16; strokeSeg(add(s.a,[o*0.4,-o]),add(s.b,[o*0.4,-o]),s.w*0.66,col); }
   for(const s of segs){ const o=s.w*0.3; strokeSeg(add(s.a,[o*0.5,-o]),add(s.b,[o*0.5,-o]),Math.max(0.6,s.w*0.18),shade(col,HI)); }
@@ -43,8 +46,9 @@ function limb(segs,col){
 // cel(path,col): inked, base, shadow crescent (away from light = back/bottom), rim light (front/top)
 function cel(path,col,o){
   o=o||{}; const d=o.d==null?1.2:o.d, h=o.h==null?0.55:o.h;
-  C.save(); C.beginPath(); path(); C.lineJoin='round'; C.lineWidth=o.lw==null?LW*1.6:o.lw; C.strokeStyle=INK; C.stroke();
+  C.save(); C.beginPath(); path(); C.lineJoin='round'; C.lineWidth=o.lw==null?LW*1.6:o.lw; C.strokeStyle=INKL; C.stroke();
   C.fillStyle=col; C.fill(); C.clip();
+  if(SOFT){ C.restore(); return; }
   if(h>0){ C.save(); C.beginPath(); C.rect(-50,-50,W+100,H+100); C.translate(-h,h); path(); C.translate(h,-h); C.fillStyle=shade(col,o.hi||HI); C.fill('evenodd'); C.restore(); }
   if(d>0){ C.save(); C.beginPath(); C.rect(-50,-50,W+100,H+100); C.translate(d,-d*0.9); path(); C.translate(-d,d*0.9); C.fillStyle=shade(col,o.sh||SH); C.fill('evenodd'); C.restore(); }
   C.restore();
@@ -61,10 +65,10 @@ const Bl=pts=>()=>{ const n=pts.length, m=i=>lerp(pts[i%n],pts[(i+1)%n],0.5); C.
 // ---------- builds ----------
 function build(s){
   const b=s.build||({bear:'big',bull:'big',whale:'big',unit:'huge',paper:'slim',lag:'slim',doom:'slim',keyboard:'slim',gas:'small'})[s.id]||'normal';
-  const B={normal:{t:1,sw:8.4,ww:5.4,ua:9.4,fa:9.2,th:12.6,sh:12.6,fist:3.4,head:1.12},
-           slim:  {t:0.86,sw:7.2,ww:4.8,ua:9.4,fa:9.2,th:12.6,sh:12.6,fist:3.1,head:1.12},
-           small: {t:0.95,sw:7.6,ww:6,ua:8.8,fa:8.6,th:11.6,sh:11.6,fist:3.3,head:1.2},
-           big:   {t:1.28,sw:10.4,ww:7.2,ua:9.6,fa:9.4,th:12.4,sh:12.6,fist:4.0,head:1.12},
+  const B={normal:{t:1.08,sw:10,ww:5.2,ua:9.6,fa:9.4,th:12.8,sh:12.8,fist:4,head:1.0},
+           slim:  {t:0.94,sw:8.6,ww:5.2,ua:9.6,fa:9.4,th:12.8,sh:12.8,fist:3.6,head:1.0},
+           small: {t:1.0,sw:9,ww:6.4,ua:9,fa:8.8,th:11.8,sh:11.8,fist:3.8,head:1.1},
+           big:   {t:1.32,sw:12,ww:7,ua:9.8,fa:9.6,th:12.6,sh:12.8,fist:4.6,head:1.04},
            huge:  {t:1.45,sw:12.5,ww:11.5,ua:9.4,fa:9.2,th:11.6,sh:12.4,fist:4.2,head:1.08}}[b];
   B.kind=b; return B;
 }
@@ -209,8 +213,8 @@ function rig(P,s,B){
   const u=nrm(sub(P.neck,P.hip)), n=[-u[1],u[0]]; // n = body "front" (perp toward face direction when upright)
   const nf = n[0]>=0||P.head? n : mul(n,-1);
   R.u=u; R.n=nf;
-  R.fS=add(add(P.neck,mul(u,-2.6)),mul(nf,B.sw*0.3));
-  R.bS=add(add(P.neck,mul(u,-2.6)),mul(nf,-B.sw*0.42));
+  R.fS=add(add(P.neck,mul(u,-2.8)),mul(nf,B.sw*0.42));
+  R.bS=add(add(P.neck,mul(u,-2.8)),mul(nf,-B.sw*0.5));
   R.fHip=add(P.hip,mul(nf,1.6)); R.bHip=add(P.hip,mul(nf,-1.8));
   const knee=(Hp,F)=>{ const k1=ik(Hp,F,B.th,B.sh,-1), k2=ik(Hp,F,B.th,B.sh,1); return (k1[1]>k2[1]+1.5 && F[0]<Hp[0]-3) ? k2 : k1; };
   R.fK=P.fK||knee(R.fHip,P.fF);
@@ -460,6 +464,9 @@ function torsoDetail(s,R,B,f){
     fillP(E(...add(fr(0.62,0.6),[-1,-0.6]),0.6,0.6),'#ff2e2e'); fillP(E(...add(fr(0.62,0.6),[1,-0.6]),0.6,0.6),'#3bff6a'); fillP(()=>{ const p=fr(0.62,0.6); C.rect(X(p[0]-1.6),Y(p[1]+0.6),3.2,0.7); },'#2a6fd6');
     strokeP(Pl([fr(0.2,-B.ww),fr(0.2,B.ww)]),shade(top,0.7),0.5); }
   if(o==='wool'){ for(let i=0;i<9;i++){ const t=0.12+(i%3)*0.32, kk=((i*7)%5-2)*2.2; const p=fr(t,kk); cel(E(p[0],p[1],2.6,2.4),i%2?top:shade(top,1.04),{d:0.6,h:0.5,lw:0.6}); } }
+  // folds
+  if(o!=='wool'&&o!=='space'){ const fc=shade(o==='vest'?s.skin:top,0.74);
+    strokeP(Pl([fr(0.86,-B.sw*0.7),fr(0.62,-B.sw*0.25)]),fc,0.45); strokeP(Pl([fr(0.32,B.ww*0.8),fr(0.18,B.ww*0.2)]),fc,0.4); strokeP(Pl([fr(0.5,-B.ww*0.9),fr(0.38,-B.ww*0.3)]),fc,0.35); }
   // logos / chest marks
   const chest=fr(0.62,1.2);
   if(s.id==='diamond') cel(Pg([add(chest,[0,-1.8]),add(chest,[1.6,0]),add(chest,[0,1.8]),add(chest,[-1.6,0])]),'#5ad1ff',{d:0.4,h:0.4,lw:0.45});
@@ -523,6 +530,7 @@ function drawFigure(s,P,f){
   const arm=(S,E_,Hd,back)=>{
     const ua=5.2*t, fa=4.6*t;
     const sk=back?dk(skin):skin, sl=back?dk(top):top;
+    if(sleeve!=='none') cel(E(S[0],S[1]+0.6,ua*0.62,ua*0.58),sl,{d:0.6,h:0.4});
     if(sleeve==='long') limb([{a:S,b:E_,w:ua+0.4},{a:E_,b:lerp(E_,Hd,0.72),w:fa+0.5}],sl);
     else { limb([{a:S,b:E_,w:ua},{a:E_,b:Hd,w:fa}],sk);
       if(sleeve==='short') limb([{a:S,b:lerp(S,E_,0.55),w:ua+1.2}],sl); }
@@ -534,6 +542,10 @@ function drawFigure(s,P,f){
   const leg=(Hp,K,F,back)=>{
     const th=7.2*t, sh=5.4*t, c=back?dk(pants):pants;
     limb([{a:Hp,b:K,w:th},{a:K,b:F,w:sh}],c);
+    if(!animal||s.head==='goblin'){ const fc=shade(c,0.72), kk=sub(K,Hp), kn=nrm(perp(kk));
+      strokeP(Pl([lerp(Hp,K,0.45),add(lerp(Hp,K,0.82),mul(kn,th*0.18))]),fc,0.45);
+      strokeP(Pl([add(K,mul(kn,-th*0.3)),add(lerp(K,F,0.25),mul(kn,-th*0.1))]),fc,0.4);
+      strokeP(Pl([add(lerp(K,F,0.55),mul(kn,sh*0.25)),add(lerp(K,F,0.75),mul(kn,sh*0.05))]),fc,0.35); }
     if(s.outfit==='gi'||s.outfit==='robe'){ const a=lerp(K,F,0.55); cel(Pg([add(a,[-sh*0.55,0]),add(a,[sh*0.55,0]),add(F,[sh*0.85,-1.6]),add(F,[-sh*0.85,-1.6])]),c,{d:0.5,h:0}); }
     shoe(F,K,back?shade(s.shoes,0.85):s.shoes,back,{kind:animal&&!['goblin'].includes(s.head)&&s.id!=='bull'&&s.id!=='bear'&&s.id!=='whale'?'paw':'shoe'});
   };
@@ -612,7 +624,8 @@ function flash(cv){ const c2=document.createElement('canvas'); c2.width=cv.width
 const CACHE_MAX=420;
 function remember(key,cv){ cache.set(key,cv); if(cache.size>CACHE_MAX){ const first=cache.keys().next().value; cache.delete(first); } return cv; }
 function crop(cv,ox,oy){
-  const c=cv.getContext('2d',{willReadFrequently:true}), w=cv.width, h=cv.height, d=c.getImageData(0,0,w,h).data;
+  const c=cv.getContext('2d',{willReadFrequently:true}), w=cv.width, h=cv.height; let d;
+  try{ d=c.getImageData(0,0,w,h).data; }catch(e){ cv._ox=ox; cv._oy=oy; return cv; } // opened from file:// (tainted canvas): skip the trim
   let x0=w,y0=h,x1=-1,y1=-1;
   for(let y=0;y<h;y++){ const row=y*w*4; for(let x=0;x<w;x++) if(d[row+x*4+3]){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
   if(x1<0){ cv._ox=ox; cv._oy=oy; return cv; }
@@ -625,21 +638,33 @@ function crop(cv,ox,oy){
 // DD.SPRITE_ART = { <fighterId>: { src:'img/fighters/<id>.png', cell:[w,h], anchor:[x,y] (foot point inside a cell, px),
 //   height: px from feet to top of head in the art (used to match the 56-unit cast height), anims:{ idle:{row:0,n:8}, walk:{row:1,n:8}, ... } } }
 // Any pose not listed in anims falls back to the procedural rig.
-const ART={}, artWaiting=new Set();
+const ART={}; let SKIPART=false;
+function artNotify(id){ for(const k of [...cache.keys()]) if(!id||k.startsWith(id+'|')) cache.delete(k); try{ dispatchEvent(new CustomEvent('dd:art',{detail:id})); }catch(e){} }
 function artFor(spec){
   const def=(DD.SPRITE_ART||{})[spec.id]; if(!def) return null;
   let a=ART[spec.id];
-  if(!a){ a=ART[spec.id]={def,img:new Image(),ok:false}; a.img.onload=()=>{ a.ok=true; for(const k of [...cache.keys()]) if(k.startsWith(spec.id+'|')) cache.delete(k); }; a.img.onerror=()=>{ a.bad=true; }; a.img.src=def.src; }
+  if(!a){ a=ART[spec.id]={def,img:new Image(),ok:false}; a.img.onload=()=>{ a.ok=true; artNotify(spec.id); }; a.img.onerror=()=>{ a.bad=true; }; a.img.src=def.src; }
   return a.ok?a:null;
+}
+// small atlas of every fighter's idle frame, so menus show the real art before full sheets arrive
+let IDLE=null;
+function idleAtlas(){ const d=DD.SPRITE_IDLE; if(!d) return null;
+  if(!IDLE){ IDLE={img:new Image(),ok:false}; IDLE.img.onload=()=>{ IDLE.ok=true; artNotify(null); }; IDLE.img.src=d.src; }
+  return IDLE.ok?IDLE:null; }
+function cut(img,sx,sy,d,alt){
+  const [cw,ch]=d.cell, scale=d.unit?RES/d.unit:(56*RES)/(d.height||ch);
+  const cv=document.createElement('canvas'); cv.width=Math.round(cw*scale); cv.height=Math.round(ch*scale);
+  const c=cv.getContext('2d'); c.imageSmoothingEnabled=!!d.smooth; c.drawImage(img,sx,sy,cw,ch,0,0,cv.width,cv.height);
+  if(alt){ try{ const o=finish(cv,true,0,0,true); c.clearRect(0,0,cv.width,cv.height); c.drawImage(o,0,0); }catch(e){ c.filter='hue-rotate(150deg)'; c.globalCompositeOperation='copy'; c.drawImage(cv,0,0); c.filter='none'; c.globalCompositeOperation='source-over'; } }
+  return crop(cv,Math.round(d.anchor[0]*scale),Math.round(d.anchor[1]*scale));
 }
 function artFrame(a,poseName,frame,alt){
   const d=a.def, an=d.anims[poseName]; if(!an) return null;
-  const n=an.n||1, fi=((frame%n)+n)%n, [cw,ch]=d.cell, scale=(56*RES)/(d.height||ch);
-  const cv=document.createElement('canvas'); cv.width=Math.round(cw*scale); cv.height=Math.round(ch*scale);
-  const c=cv.getContext('2d'); c.imageSmoothingEnabled=!!d.smooth; c.drawImage(a.img,(an.col||0)*cw+fi*cw,an.row*ch,cw,ch,0,0,cv.width,cv.height);
-  if(alt) outline(cv,true);
-  return crop(cv,Math.round(d.anchor[0]*scale),Math.round(d.anchor[1]*scale));
+  const n=an.n||1, fi=((frame%n)+n)%n, [cw,ch]=d.cell;
+  return cut(a.img,(an.col||0)*cw+fi*cw,an.row*ch,d,alt);
 }
+function idleFrame(spec,alt){ const d=DD.SPRITE_IDLE, A=idleAtlas(); if(!A) return null; const i=d.order.indexOf(spec.id); if(i<0) return null;
+  const c=DD.SPRITE_ART_COMMON; return cut(A.img,0,i*c.cell[1],c,alt); }
 
 // ---------- public ----------
 const lastHead={};
@@ -650,7 +675,8 @@ function get(spec,poseName,frame,alt,white){
   let cv=cache.get(key);
   if(cv){ cache.delete(key); cache.set(key,cv); return cv; }
   if(white){ const src=get(spec,poseName,frame,alt,false); cv=flash(src); cv._ox=src._ox; cv._oy=src._oy; return remember(key,cv); }
-  const art=artFor(spec); if(art){ const a=artFrame(art,poseName,frame,alt); if(a) return remember(key,a); }
+  const art=SKIPART?null:artFor(spec); if(art){ const a=artFrame(art,poseName,frame,alt); if(a) return remember(key,a); }
+  else if(!SKIPART&&DD.SPRITE_ART&&DD.SPRITE_ART[spec.id]){ const a=idleFrame(spec,alt); if(a) return a; } // not cached: swapped for the real frame once the sheet loads
   const base=document.createElement('canvas'); base.width=W*RES; base.height=H*RES;
   C=base.getContext('2d',{willReadFrequently:true}); C.scale(RES,RES);
   try{
@@ -665,15 +691,27 @@ function get(spec,poseName,frame,alt,white){
   return remember(key,cv);
 }
 function portrait(spec,scale,poseName,alt){
-  const cv=get(spec,poseName||'idle',0,alt,false);
-  const k=scale*2/RES, out=document.createElement('canvas'); out.width=Math.round(cv.width*k); out.height=Math.round(cv.height*k);
-  const c=out.getContext('2d'); c.imageSmoothingEnabled=k<1; c.imageSmoothingQuality='high'; c.drawImage(cv,0,0,out.width,out.height);
-  return out.toDataURL();
+  const make=()=>{ const cv=get(spec,poseName||'idle',0,alt,false);
+    const k=scale*2/RES, out=document.createElement('canvas'); out.width=Math.round(cv.width*k); out.height=Math.round(cv.height*k);
+    const c=out.getContext('2d'); c.imageSmoothingEnabled=false; c.drawImage(cv,0,0,out.width,out.height); return out.toDataURL(); };
+  try{ return make(); }catch(e){ // file:// pages can't export image-based canvases: fall back to the drawn sprite
+    SKIPART=true; try{ const k=spec.id+'|'+(poseName||'idle')+'|0|'+(alt?1:0)+'|0'; cache.delete(k); return make(); } finally{ SKIPART=false; const k=spec.id+'|'+(poseName||'idle')+'|0|'+(alt?1:0)+'|0'; cache.delete(k); } }
 }
 const warmQ=[], warmed=new Set();
 function prewarm(spec,alt){ const k=spec.id+(alt?'a':''); if(warmed.has(k)) return; warmed.add(k);
   const order=['idle','walk','jab','punch','kick','block','hit','crouch','jump','cpunch','ckick','upper','heavy','round','lunge','kd','fall','getup','dash','special','charge','throw','grab','jpunch','jkick','dive','cblock','dizzy','win','ball'];
   for(const p of order){ const n=nFrames(p); for(let f=0;f<n;f++) warmQ.push([spec,p,f,alt]); } }
 function warmTick(budgetMs){ const t=performance.now(); while(warmQ.length&&performance.now()-t<budgetMs){ const [s,p,f,a]=warmQ.shift(); get(s,p,f,a,false); } }
-DD.Sprites={ get, portrait, shade, W, H, RES, prewarm, warmTick, nFrames };
+function bake(spec,poseName,frame,res,noLines){ // high-res flat render for the offline pixel-art baker
+  const n=nFrames(poseName), cv=document.createElement('canvas'); cv.width=W*res; cv.height=H*res;
+  C=cv.getContext('2d'); C.imageSmoothingEnabled=false; C.scale(res,res); SOFT=true; INKL=noLines?'rgba(0,0,0,0)':INK;
+  try{ if(poseName==='ball') drawBall(spec,frame); else { const P=pose(poseName,frame%Math.max(1,n),spec); if(spec.acc==='scarf'){ const prev=pose(poseName,(frame+n-1)%n,spec); P._vel=sub(P.neck,prev.neck); } if(P.sit&&spec.id==='cat') drawBall(spec,0); else drawFigure(spec,P,frame); } }
+  finally{ SOFT=false; INKL=INK; }
+  return cv; }
+function rigFor(spec,poseName,frame){ const P=pose(poseName,frame,spec); if(!P) return null; const B=build(spec), R=rig(P,spec,B);
+  const o={B:{t:B.t,sw:B.sw,ww:B.ww,fist:B.fist,head:B.head,kind:B.kind},ht:P.ht||0,bFront:!!P.bFront,sit:!!P.sit};
+  for(const k of ['hip','neck','head','fS','bS','fE','bE','fH','bH','fHip','bHip','fK','bK','fF','bF']) o[k]=R[k]||P[k];
+  return o; }
+const ANIM_LIST=['idle','walk','jab','punch','upper','heavy','kick','round','lunge','cpunch','ckick','jpunch','jkick','dive','throw','special','crouch','jump','block','cblock','hit','fall','kd','getup','dash','charge','dizzy','win','ball'];
+DD.Sprites={ get, portrait, shade, W, H, RES, prewarm, warmTick, nFrames, bake, rigFor, ANIM_LIST, OX, OY };
 })();
