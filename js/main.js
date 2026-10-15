@@ -52,14 +52,26 @@ function drawTitle(){
   tf++; sizeTitle();
   tc.setTransform(1,0,0,1,0,0); tc.clearRect(0,0,tW,tH); tc.imageSmoothingEnabled=false;
   tc.drawImage(titleStage.cv,0,0,titleStage.cv.width*tPX,titleStage.cv.height*tPX);
-  const n=tW<900?5:tW<1500?7:9, L=lineupAll.slice(0,n), mid=(n-1)/2;
   const floorY=titleStage.top+Math.round((tH-titleStage.top)*0.42);
-  const want=Math.min(floorY*0.92, tW/n*1.55);           // target sprite height in canvas px
-  const gap=Math.min(tW/(n+0.6), want*0.72);
+  let want=Math.min(floorY*0.92, tW/5*1.3);              // target sprite height in canvas px
+  // keep the line-up clear of the menu card: fighters fill the space either side of it
+  const cr=document.querySelector('#screen-title .title-card').getBoundingClientRect(), vr=tcv.getBoundingClientRect(), sx=tW/Math.max(1,vr.width);
+  const cardL=(cr.left-vr.left)*sx, cardR=(cr.right-vr.left)*sx, cardB=(cr.bottom-vr.top)*sx;
+  const blocked=cardB>floorY-want*0.9;
+  const slots=[]; let gap=want*0.62;
+  if(blocked){ const pad=want*0.28, zL=[want*0.3,cardL-pad], zR=[cardR+pad,tW-want*0.3];
+    const fit=z=>Math.max(0,Math.floor((z[1]-z[0])/gap)+1);
+    let nl=fit(zL), nr=fit(zR);
+    if(nl+nr<4){ want*=0.8; gap=want*0.62; nl=fit(zL); nr=fit(zR); }
+    const k=Math.min(nl,nr,5);
+    for(let i=0;i<k;i++){ slots.push(zL[1]-i*gap); slots.push(zR[0]+i*gap); } }
+  if(!slots.length){ const n=tW<900?5:tW<1500?7:9; gap=Math.min(tW/(n+0.6),want*0.72); for(let i=0;i<n;i++) slots.push(tW/2+(i-(n-1)/2)*gap); }
+  slots.sort((a,b)=>a-b);
+  const L=lineupAll.slice(0,slots.length), midX=tW/2;
   L.forEach((s,i)=>{
     const cv=DD.Sprites.menu(s,((tf/14)|0)+i*3,false); if(!cv) return;
-    const A=DD.SPRITE_ART&&DD.SPRITE_ART[s.id], hh=(A&&A.h?A.h:112)*DD.Sprites.RES/2; // sprite height in its own backing px
-    const k=want/hh, x=Math.round(tW/2+(i-mid)*gap), y=floorY+Math.round(Math.abs(i-mid)*-2), dir=i<=mid?1:-1;
+    const A=DD.SPRITE_ART&&DD.SPRITE_ART[s.id], hh=(A&&A.h?A.h:112)*DD.Sprites.RES/2;
+    const k=want/hh, x=Math.round(slots[i]), y=floorY, dir=x<midX?1:-1;
     tc.fillStyle='rgba(30,12,4,.4)'; tc.beginPath(); tc.ellipse(x,y+2,want*0.2,want*0.035,0,0,7); tc.fill();
     tc.save(); tc.translate(x,y); tc.scale(dir*k,k); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
   });

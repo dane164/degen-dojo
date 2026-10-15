@@ -377,7 +377,8 @@ button:focus-visible,.tile:focus-visible,.atile:focus-visible{outline:3px solid 
 .title-card .title-links{justify-content:center;gap:18px}
 .title-card .link-btn{color:rgba(255,247,236,.7);text-decoration:none;font-size:18px;letter-spacing:1px}
 .title-card .link-btn:hover{color:var(--gold)}
-.title-floor{position:relative;width:100%;flex:1 1 auto;min-height:200px;margin-top:8px}
+.title-floor{position:relative;z-index:1;width:100%;flex:1 1 auto;min-height:200px;margin-top:-16vh;pointer-events:none}
+.title-hero,.title-card{position:relative;z-index:3}
 #titleCanvas{position:absolute;inset:0;display:block;width:100%;height:100%;image-rendering:pixelated}
 .title-floor .stats-line{position:absolute;left:0;right:0;bottom:clamp(6px,1.4vh,16px);margin:0;font-size:clamp(15px,1.6vw,20px);color:rgba(255,247,236,.8)}
 @media (max-width:640px){
@@ -386,6 +387,7 @@ button:focus-visible,.tile:focus-visible,.atile:focus-visible{outline:3px solid 
   .topbar .icon-btn{width:36px;height:36px}
   #screen-title{padding:0;height:calc(100svh - 54px);min-height:600px}
   .topbar .ticker,.topbar .hint{display:none}
+  .title-floor{margin-top:6px}
   .mode-btn small{display:none}
   .mode-btn{padding:10px 12px}
   .title-card{padding:12px;gap:10px}
