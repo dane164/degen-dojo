@@ -44,6 +44,9 @@ const api={
   heartbeat(){ return rpc('dd_heartbeat',{pid:ident.id,secret:ident.secret}).catch(()=>{}); },
   async report(mid,winner){ const r=await rpc('dd_report',{pid:ident.id,secret:ident.secret,mid,p_winner:winner}); if(r&&r.profile) profile=r.profile; return r; },
   top(n){ return rpc('dd_top',{lim:n||100}); },
+  async setWallet(w,holder){ profile=await rpc('dd_set_wallet',{pid:ident.id,secret:ident.secret,p_wallet:w||'',p_holder:!!holder}); return profile; },
+  vote(round,cand){ return rpc('dd_vote',{pid:ident.id,secret:ident.secret,p_round:round,p_cand:cand}); },
+  tally(round){ return rpc('dd_vote_tally',{p_round:round,pid:ident?ident.id:null}); },
   stats(){ return rpc('dd_stats',{}); },
 };
 

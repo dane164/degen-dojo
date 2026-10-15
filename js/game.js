@@ -1,6 +1,7 @@
 /* DEGEN DOJO — fight engine */
 (function(){
 const AW=480, AH=270, FLOOR=232, WALL_L=18, WALL_R=462;
+const NORMAL_DMG=0.7; // punches & kicks do 30% less than their listed damage (specials untouched)
 const SC=2, MAXM=200, GRAV=0.62, MAXHP=1000, ROUND_TIME=60, WINS_NEEDED=2, WAKE_INV=14, KD_TIME=24;
 const A = ()=>DD.Audio;
 const SPX = ()=>DD.Specials||{update:{},pose:{},fx:{},under:{},proj:{},zone:{},drawFighter:{},tick(){},drawBeam(){return false;},RANGED:[],SELF:[]};
@@ -58,7 +59,7 @@ class Fighter {
 class Fight {
   constructor(opts){
     this.p=[ new Fighter(opts.p1,0,false), new Fighter(opts.p2,1, opts.p1.id===opts.p2.id) ]; this.p[1].isCPU=!!opts.ai;
-    this.noVs=!!opts.noVs; this.labels=opts.labels||['1P','CPU']; this.names=opts.names||null; this.ev=opts.record?[]:null; this._inUpdate=false; this.remote=!!opts.remote;
+    this.noVs=!!opts.noVs; this.labels=opts.labels||['1P','CPU']; this.holder=opts.holder||[false,false]; this.names=opts.names||null; this.ev=opts.record?[]:null; this._inUpdate=false; this.remote=!!opts.remote;
     this.arena=opts.arena; this.ai=opts.ai; this.onEnd=opts.onEnd; this.onRound=opts.onRound||(()=>{});
     this.round=1; this.frame=0; this.fx=[]; this.proj=[]; this.zones=[]; this.clones=[]; this.texts=[];
     this.shake=0; this.hitstop=0; this.paused=false; this.over=false;
@@ -302,7 +303,7 @@ class Fight {
     if(t>a.su && t<=a.su+a.ac && !f.atkHit){
       const box=this.box(f,a.x0,a.x1,a.y0,a.y1);
       if(this.overlap(box,o.hurt())){ f.atkHit=true; f.contact=true;
-        this.hit(f,o,{dmg:a.dmg,h:a.h,kb:a.kb,hs:a.hs,kd:a.kd,heavy:a.heavy,light:a.light,melee:true,launch:a.launch||(a.aa&&!o.grounded),name:a.name}); }
+        this.hit(f,o,{dmg:Math.round(a.dmg*NORMAL_DMG),h:a.h,kb:a.kb,hs:a.hs,kd:a.kd,heavy:a.heavy,light:a.light,melee:true,launch:a.launch||(a.aa&&!o.grounded),name:a.name}); }
       for(const c of this.clones) if(c.owner!==f && this.overlap(box,{x0:c.x-20,x1:c.x+20,y0:c.y-100,y1:c.y})){ c.life=0; this.spark(c.x,c.y-60,'#fff',8); }
     }
     // FOMO cancel: double-tap forward once the attack has connected (hit or block): dash out of it for 25 meter
@@ -857,7 +858,8 @@ class Fight {
   drawShield(ctx,f){
     const G=this.shieldGeom(f), v=f.shieldVis, fr=this.frame, gd=f.guard/100;
     const parry=f.parryFlash>0, hitT=Math.min(1,f.shieldFlash/12);
-    let rgb = parry ? [255,210,63] : gd>0.6 ? [90,209,255] : gd>0.3 ? [255,190,70] : [255,72,60];
+    const hold=this.holder&&this.holder[this.p.indexOf(f)];
+    let rgb = parry ? [255,210,63] : gd>0.6 ? (hold?[255,196,40]:[90,209,255]) : gd>0.3 ? [255,190,70] : [255,72,60];
     if(!parry && gd<=0.3 && fr%6<2) rgb=[255,150,140];
     const C=(a)=>'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+','+a+')';
     const sc=0.72+0.28*v, rx=G.rx*sc*(1+hitT*0.12), ry=G.ry*sc*(1+hitT*0.06);
@@ -971,8 +973,9 @@ class Fight {
     ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.fillRect(AW/2-16,7,32,2);
     txt(ctx,String(Math.max(0,this.timer)).padStart(2,'0'),AW/2,11,'#1a0b02',16,'center');
     for(let i=0;i<WINS_NEEDED;i++){ pip(ctx,AW/2-12-i*9,38,i<a.wins,fr); pip(ctx,AW/2+5+i*9,38,i<b.wins,fr); }
-    txt(ctx,a.spec.name.toUpperCase(),50,25+5,'#ffffff',8,'left',true); txt(ctx,b.spec.name.toUpperCase(),AW-50,25+5,'#ffffff',8,'right',true);
-    txt(ctx,this.labels[0],50,41,'#ffd23f',6,'left',true); txt(ctx,this.labels[1],AW-50,41,'#ffd23f',6,'right',true);
+    const H=this.holder, gold=(fr>>3)%2?'#ffe27a':'#ffc21a';
+    txt(ctx,a.spec.name.toUpperCase(),50,25+5,H[0]?gold:'#ffffff',8,'left',true); txt(ctx,b.spec.name.toUpperCase(),AW-50,25+5,H[1]?gold:'#ffffff',8,'right',true);
+    txt(ctx,this.labels[0]+(H[0]?' · HOLDER':''),50,41,'#ffd23f',6,'left',true); txt(ctx,(H[1]?'HOLDER · ':'')+this.labels[1],AW-50,41,'#ffd23f',6,'right',true);
     // combo counters
     for(let i=0;i<2;i++){ const c=this.comboHud[i]; if(c.t>0){ c.t--; const x=i?AW-20:20, al=i?'right':'left', s=c.t>62?1.25:1;
       ctx.save(); ctx.globalAlpha=Math.min(1,c.t/15); const jig=c.t>64?(c.t%2?1:-1):0;

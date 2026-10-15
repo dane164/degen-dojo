@@ -85,6 +85,7 @@ function openHow(pre,cb){ $('#howOv').hidden=false; $('#howOv .card').classList.
 function closeHow(){ $('#howOv').hidden=true; if(st.fight && !st.net && $('#pauseOv').hidden) st.fight.paused=false; const cb=st.howCb; st.howCb=null; if(cb) cb(); }
 $('#howBtn').onclick=$('#helpBtn').onclick=()=>openHow(false);
 $('#lbBtn').onclick=$('#lbTop').onclick=()=>openLeaderboard();
+$('#voteBtn').onclick=()=>{ Au.sfx('select'); openVote(); };
 $('#profileChip').onclick=()=>openLeaderboard();
 $('#brandHome').onclick=e=>{ e.preventDefault(); if(st.net) return toast('Finish or forfeit the match first.'); quitToTitle(); };
 $('#backTitle').onclick=()=>quitToTitle();
@@ -173,7 +174,8 @@ function startMatch(){ if(typeof Chat!=='undefined') Chat.close();
   const p2 = st.randomCpu ? F[Math.floor(Math.random()*F.length)] : st.p2;
   st.curP2=p2; st.net=null; st.online=null; DD.Sprites.prewarm(st.p1); DD.Sprites.prewarm(p2, p2.id===st.p1.id);
   const local=st.mode==='local';
-  st.fight = new DD.Game.Fight({ p1:st.p1, p2, arena:st.arena, ai: local?null:new DD.Game.CPU(st.diff), labels: local?['P1','P2']:['YOU','CPU'], onEnd:endMatch });
+  st.koShot=null; st.koRound=-1;
+  st.fight = new DD.Game.Fight({ p1:st.p1, p2, arena:st.arena, ai: local?null:new DD.Game.CPU(st.diff), labels: local?['P1','P2']:['YOU','CPU'], holder:[isHolder(),false], onEnd:endMatch });
   $$('.overlay').forEach(o=>o.hidden=true);
   show('game'); Au.playSong(st.arena.music,true); resetInput();
   if(!st.bindsShown){ st.bindsShown=true; openHow(true); }
@@ -188,6 +190,8 @@ function endMatch(winIdx,fight){
   $('#resElo').hidden=true;
   fillStats(fight, local?winIdx:0);
   setResultButtons(local?'local':'cpu');
+  const me=local?winIdx:0; st.share={won:local||won, fighter:fight.p[me].spec.name, opp:fight.p[1-me].spec.name, grade:grade(fight,me), combo:fight.stats[me].maxCombo, perfect:fight.p[me].wins>0&&fight.p[1-me].wins===0, who:local?(winIdx?'P2':'P1'):(ON.profile&&ON.profile.name)||'', vs:local?'':'CPU'};
+  $('#shareRow').hidden=!(st.share.won&&st.koShot);
   setTimeout(()=>{ $('#resultOv').hidden=false; },500);
 }
 function grade(fight,i){ const s=fight.stats[i], me=fight.p[i], op=fight.p[1-i], won=me.wins>op.wins;
@@ -199,8 +203,46 @@ function fillStats(fight,i){ const s=fight.stats[i];
   $('#resGrade').textContent=gr; $('#resGrade').className='grade g-'+gr; $('#resHero').style.setProperty('--hero',hero);
   $('#resStats').innerHTML=[['HITS',s.hits],['BEST COMBO',s.maxCombo],['DAMAGE',Math.round(s.dmg)],['BLOCKS',s.blocks],['PARRIES',s.parries],['ROUNDS',fight.p[0].wins+'-'+fight.p[1].wins]]
     .map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join(''); }
+// ---------- share-a-KO card ----------
+const SITE='https://dane164.github.io/degen-dojo/';
+function koCard(){ const S=st.share, src=st.koShot; if(!S||!src) return null;
+  const W=1200,H=675, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
+  x.drawImage(src,0,0,src.width,src.height,0,0,W,H);
+  let g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'rgba(20,6,14,.75)'); g.addColorStop(.3,'rgba(20,6,14,.05)'); g.addColorStop(.55,'rgba(20,6,14,.1)'); g.addColorStop(.8,'rgba(20,6,14,.85)'); g.addColorStop(1,'rgba(20,6,14,.97)'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.fillStyle='#120610'; x.fillRect(0,0,W,124); x.fillStyle='#ff6a00'; x.fillRect(0,120,W,4); x.fillRect(0,H-8,W,8);
+  const P='"Press Start 2P", monospace', T=(t,X,Y,sz,col,al)=>{ x.font=sz+'px '+P; x.textAlign=al||'left'; x.lineJoin='round'; x.lineWidth=Math.max(4,sz/5); x.strokeStyle='#14060e'; x.strokeText(t,X,Y); x.fillStyle=col; x.fillText(t,X,Y); };
+  T('DEGEN DOJO',40,74,30,'#ffd23f'); T('$DOJO',W-40,74,24,'#ff8c2e','right');
+  T(S.perfect?'PERFECT K.O.':'K.O.',40,H-170,S.perfect?40:52,'#ff6a00');
+  const who=S.who?S.who.toUpperCase()+' AS ':''; T(who+S.fighter.toUpperCase(),40,H-118,24,'#ffffff');
+  T('DESTROYED '+S.opp.toUpperCase()+(S.vs&&S.vs!=='CPU'?' ('+S.vs.toUpperCase()+')':''),40,H-88,20,'#ffb36b');
+  T('GRADE '+S.grade+(S.combo>=2?'   ·   '+S.combo+'-HIT COMBO':''),40,H-44,18,'#ffd23f');
+  T('PLAY FREE',W-40,H-88,18,'#ffffff','right'); T(SITE.replace('https://','').replace(/\/$/,''),W-40,H-50,14,'#ffb36b','right');
+  return c; }
+function cardBlob(c){ const d=atob(c.toDataURL('image/png').split(',')[1]), a=new Uint8Array(d.length); for(let i=0;i<d.length;i++) a[i]=d.charCodeAt(i); return new Blob([a],{type:'image/png'}); }
+function shareText(){ const S=st.share; return `Just ${S.perfect?'PERFECT-KO\'d':'KO\'d'} ${S.opp} as ${S.fighter} in DEGEN DOJO 🥊 ${S.grade}-rank${S.combo>=2?`, ${S.combo}-hit combo`:''}.\n\nThink you can beat me? Free to play 👇\n${SITE}\n\n$DOJO`; }
+async function shareKO(){ const c=koCard(); if(!c) return toast('No KO to share yet.'); const blob=cardBlob(c), file=new File([blob],'degen-dojo-ko.png',{type:'image/png'}), text=shareText();
+  try{ if(navigator.canShare&&navigator.canShare({files:[file]})&&/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)){ await navigator.share({files:[file],text}); return; } }catch(e){ if(e&&e.name==='AbortError') return; }
+  const w=window.open('https://x.com/intent/post?text='+encodeURIComponent(text),'_blank','noopener');
+  let copied=false; try{ await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); copied=true; }catch(e){}
+  if(!copied) saveKO(c);
+  toast(copied?'KO card copied. Paste it into your post (Ctrl+V / ⌘V).':'KO card downloaded. Attach it to your post.');
+  if(!w) toast('Pop-up blocked. Allow pop-ups to open X.'); }
+function saveKO(c){ c=c||koCard(); if(!c) return; const a=document.createElement('a'); a.download='degen-dojo-ko.png'; a.href=c.toDataURL('image/png'); document.body.appendChild(a); a.click(); a.remove(); }
+// ---------- community vote: next fighter ----------
+async function openVote(){ const V=DD.VOTE; $('#voteOv').hidden=false; $('#voteRound').textContent=V.round; $('#voteTitle').textContent=V.title; $('#voteSub').textContent=V.ends+'. One vote per fighter profile; you can change it any time.';
+  renderVote(null); if(!ON.available()){ $('#voteFoot').textContent='Voting needs the live site.'; return; }
+  try{ if(ON.ident) await ON.me().catch(()=>{}); renderVote(await ON.tally(V.round)); }catch(e){ $('#voteFoot').textContent=friendlyErr(e); } }
+function renderVote(t){ const V=DD.VOTE, tot=t?t.total:0, cnt=t?t.counts||{}:{};
+  $('#voteList').innerHTML=V.candidates.map(c=>{ const n=cnt[c.id]||0, pc=tot?Math.round(n*100/tot):0, mine=t&&t.mine===c.id;
+    return `<button class="vote-c${mine?' mine':''}" data-cand="${c.id}">${mine?'<span class="you">YOUR VOTE</span>':''}<h4>${esc(c.name)}</h4><div class="tg">"${esc(c.tag)}"</div><p>${esc(c.desc)}</p><span class="bar" style="width:${pc}%"></span><span class="pct">${pc}% · ${n}</span></button>`; }).join('');
+  $('#voteFoot').textContent = t ? `${tot} vote${tot===1?'':'s'} so far${t.mine?'':' · tap a fighter to vote'}` : 'Loading votes…'; }
+$('#voteList').addEventListener('click',async e=>{ const b=e.target.closest('[data-cand]'); if(!b) return;
+  const ok=await ensureProfile(); if(!ok) return; $('#voteOv').hidden=false;
+  try{ Au.sfx('lock'); renderVote(await ON.vote(DD.VOTE.round,b.dataset.cand)); toast('Vote locked in. Share it to rally your side.'); }catch(err){ toast(friendlyErr(err)); } });
+$('#voteOv').addEventListener('click',e=>{ if(e.target.id==='voteOv') $('#voteOv').hidden=true; });
 function setResultButtons(kind){
   $$('#resultOv [data-act]').forEach(b=>{ const a=b.dataset.act;
+    if(a==='shareKO'||a==='saveKO') return;
     b.hidden = kind==='ranked' ? !['requeue','select','title'].includes(a) : kind==='local' ? !['restart','select','title'].includes(a) : !['restart','next','select','title'].includes(a); });
 }
 function pauseGame(on){
@@ -224,35 +266,57 @@ document.addEventListener('click',e=>{
   if(act==='closeLb') $('#lbOv').hidden=true;
   if(act==='refreshLb') openLeaderboard();
   if(act==='rename') openNameModal(true);
+  if(act==='shareKO') shareKO();
+  if(act==='saveKO') saveKO();
+  if(act==='closeVote') $('#voteOv').hidden=true;
 });
 $('#pauseBtn').onclick=()=>pauseGame(true);
 $('#howOv').addEventListener('click',e=>{ if(e.target.id==='howOv') closeHow(); });
 $('#lbOv').addEventListener('click',e=>{ if(e.target.id==='lbOv') $('#lbOv').hidden=true; });
 
 // ---------- online: profile ----------
-function friendlyErr(e){ const m=e&&e.message||''; return m==='NAME_TAKEN'?'That name is taken.':m==='BAD_NAME'?'Not allowed. 3–16 letters/numbers/_ . - and keep it clean.':m==='OFFLINE'||/fetch|network|Failed/i.test(m)?"Can't reach the dojo servers. Online play needs the live site and an internet connection.":'Something went wrong ('+m+').'; }
+function friendlyErr(e){ const m=e&&e.message||''; return m==='NAME_TAKEN'?'That name is taken.':m==='BAD_WALLET'?"That doesn't look like a Solana wallet address.":m==='BAD_NAME'?'Not allowed. 3–16 letters/numbers/_ . - and keep it clean.':m==='OFFLINE'||/fetch|network|Failed/i.test(m)?"Can't reach the dojo servers. Online play needs the live site and an internet connection.":'Something went wrong ('+m+').'; }
 function refreshChip(){ const p=ON.profile, c=$('#profileChip');
-  if(!p){ c.hidden=true; return; } c.hidden=false; c.innerHTML=`<b>${esc(p.name)}</b><span>${p.elo}</span><i class="tier t-${tierClass(p.tier)}">${p.tier}</i>`; }
+  if(!p){ c.hidden=true; return; } c.hidden=false; c.innerHTML=`<b>${esc(p.name)}</b><span>${p.elo}</span><i class="tier t-${tierClass(p.tier)}">${p.tier}</i>${p.holder?'<i class="holder-badge">HOLDER</i>':''}`; }
 function tierClass(t){ return String(t||'').toLowerCase().replace(/\s+/g,'-'); }
 let nameResolve=null;
+// ---------- $DOJO holder check (read-only: just a balance lookup on a public Solana RPC) ----------
+const WALLET_RE=/^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+function isHolder(){ return !!(ON.profile&&ON.profile.holder); }
+async function tokenBalance(wallet){
+  const T=DD.TOKEN; if(!T||!T.mint) return null;            // coin not live yet
+  const body=JSON.stringify({jsonrpc:'2.0',id:1,method:'getTokenAccountsByOwner',params:[wallet,{mint:T.mint},{encoding:'jsonParsed'}]});
+  for(const url of T.rpc){ try{ const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body}); const j=await r.json(); if(j.error) continue;
+      return (j.result.value||[]).reduce((s,a)=>s+(+(a.account.data.parsed.info.tokenAmount.uiAmount)||0),0); }catch(e){} }
+  return null; }
+async function syncHolder(wallet){ // returns the saved profile
+  if(!wallet) return ON.setWallet('',false);
+  const bal=await tokenBalance(wallet); const holder=bal!=null&&bal>=(DD.TOKEN.holderMin||1);
+  return ON.setWallet(wallet, holder); }
+async function recheckHolder(){ const p=ON.profile; if(!p||!p.wallet||!DD.TOKEN.mint) return;
+  try{ const bal=await tokenBalance(p.wallet); if(bal==null) return; const h=bal>=(DD.TOKEN.holderMin||1); if(h!==!!p.holder){ await ON.setWallet(p.wallet,h); refreshChip(); } }catch(e){} }
 function openNameModal(rename){
-  $('#nameOv').hidden=false; $('#nameOv').dataset.rename=rename?'1':''; $('#nameTitle').textContent=rename?'CHANGE NAME':'PICK A FIGHTER NAME';
-  $('#nameInput').value=rename&&ON.profile?ON.profile.name:''; $('#nameErr').textContent=''; setTimeout(()=>$('#nameInput').focus(),30);
+  $('#nameOv').hidden=false; $('#nameOv').dataset.rename=rename?'1':''; $('#nameTitle').textContent=rename?'EDIT PROFILE':'PICK A FIGHTER NAME';
+  $('#nameInput').value=rename&&ON.profile?ON.profile.name:''; $('#walletInput').value=rename&&ON.profile&&ON.profile.wallet||''; $('#nameErr').textContent=''; setTimeout(()=>$('#nameInput').focus(),30);
   return new Promise(r=>nameResolve=r);
 }
 $('#nameForm').addEventListener('submit',async e=>{
   e.preventDefault(); const v=$('#nameInput').value.trim(), rename=!!$('#nameOv').dataset.rename;
   if(!/^[A-Za-z0-9_.-]{3,16}$/.test(v)){ $('#nameErr').textContent='3–16 characters: letters, numbers, _ . -'; return; }
   if(ON.nameOk && !ON.nameOk(v)){ $('#nameErr').textContent="Keep it clean. Pick another name."; return; }
+  const w=$('#walletInput').value.trim();
+  if(w && !WALLET_RE.test(w)){ $('#nameErr').textContent="That doesn't look like a Solana wallet address."; return; }
   $('#nameGo').disabled=true; $('#nameErr').textContent='';
-  try{ if(rename) await ON.rename(v); else await ON.register(v); refreshChip(); $('#nameOv').hidden=true; nameResolve&&nameResolve(true); nameResolve=null; if(rename) openLeaderboard(); }
+  try{ if(rename){ if(!ON.profile||ON.profile.name!==v) await ON.rename(v); } else await ON.register(v);
+    if(w!==((ON.profile&&ON.profile.wallet)||'') || (w&&DD.TOKEN.mint)) { const p=await syncHolder(w); if(w&&!DD.TOKEN.mint) toast('Wallet saved. Holder perks switch on when $DOJO launches.'); else if(w) toast(p.holder?'Holder verified. Welcome to the gold tier.':'Wallet saved. No $DOJO found in it yet.'); }
+    refreshChip(); $('#nameOv').hidden=true; nameResolve&&nameResolve(true); nameResolve=null; if(rename) openLeaderboard(); }
   catch(err){ $('#nameErr').textContent=friendlyErr(err); }
   finally{ $('#nameGo').disabled=false; }
 });
 $('#nameCancel').onclick=()=>{ $('#nameOv').hidden=true; nameResolve&&nameResolve(false); nameResolve=null; };
 async function ensureProfile(){
   if(!ON.available()){ toast("Online play needs the live site. It can't load here."); return false; }
-  if(ON.ident){ try{ await ON.me(); refreshChip(); return true; }catch(e){ if(e.message!=='AUTH'){ toast(friendlyErr(e)); return false; } } }
+  if(ON.ident){ try{ await ON.me(); refreshChip(); recheckHolder(); return true; }catch(e){ if(e.message!=='AUTH'){ toast(friendlyErr(e)); return false; } } }
   return openNameModal(false);
 }
 async function refreshOnlineLine(){
@@ -272,10 +336,10 @@ async function openLeaderboard(){
     if(ON.ident) await ON.me().catch(()=>{}); refreshChip();
     const [rows,stats]=await Promise.all([ON.top(100),ON.stats()]);
     const me=ON.profile;
-    $('#lbMe').innerHTML = me ? `<b>${esc(me.name)}</b> · <span class="tier t-${tierClass(me.tier)}">${me.tier}</span> · ${me.elo} ELO · ${me.wins}W ${me.losses}L · ${me.rank?'#'+me.rank:'unranked'} <button class="link-btn" data-act="rename">rename</button>` : 'Play a ranked match to get on the board.';
+    $('#lbMe').innerHTML = me ? `<b>${esc(me.name)}</b> · <span class="tier t-${tierClass(me.tier)}">${me.tier}</span> · ${me.elo} ELO · ${me.wins}W ${me.losses}L · ${me.rank?'#'+me.rank:'unranked'}${me.holder?' <i class="holder-badge">HOLDER</i>':''} <button class="link-btn" data-act="rename">edit profile / wallet</button>` : 'Play a ranked match to get on the board.';
     $('#lbStats').textContent=`${stats.online} online now · ${stats.queue} in queue · ${stats.players} ranked players`;
     $('#lbBody').innerHTML = rows.length ? rows.map(r=>{ const f=F.find(x=>x.id===r.last_fighter);
-      return `<tr class="${me&&me.name===r.name?'me':''}"><td class="rk">${r.rank}</td><td><span class="nm">${f?`<img src="${PS(f)}" alt="">`:''}${esc(r.name)}</span></td><td><span class="tier t-${tierClass(r.tier)}">${r.tier}</span></td><td class="num">${r.elo}</td><td class="num">${r.wins}-${r.losses}</td><td class="num">${r.streak>1?'🔥'+r.streak:r.streak<-1?'❄'+(-r.streak):'–'}</td></tr>`; }).join('')
+      return `<tr class="${me&&me.name===r.name?'me':''}"><td class="rk">${r.rank}</td><td><span class="nm${r.holder?' gold':''}">${f?`<img src="${PS(f)}" alt="">`:''}${esc(r.name)}${r.holder?'<i class="holder-badge">HOLDER</i>':''}</span></td><td><span class="tier t-${tierClass(r.tier)}">${r.tier}</span></td><td class="num">${r.elo}</td><td class="num">${r.wins}-${r.losses}</td><td class="num">${r.streak>1?'🔥'+r.streak:r.streak<-1?'❄'+(-r.streak):'–'}</td></tr>`; }).join('')
       : '<tr><td colspan="6" class="lb-empty">No ranked matches yet. Be the first degen on the board.</td></tr>';
   }catch(e){ $('#lbBody').innerHTML=`<tr><td colspan="6" class="lb-empty">${esc(friendlyErr(e))}</td></tr>`; }
 }
@@ -328,7 +392,7 @@ function onNetMsg(O,m){
   else if(m.t==='in' && st.net && O.role==='host') st.net.onInput(m);
   else if(m.t==='s' && st.net && O.role==='guest') st.net.onSnapshot(m.d);
   else if(m.t==='end' && O.role==='guest') finishOnline(m.w===1,'KO');
-  else if(m.t==='ff') finishOnline(true,'FORFEIT');
+  else if(m.t==='ff'){ const w=st.fight?st.fight.p.findIndex(f=>f.wins>=2):-1; finishOnline(w>=0?w===O.myIdx:true, w>=0?'KO':'FORFEIT'); }
   else if(m.t==='bye' && !O.done && O.started){ O.byeAt=performance.now(); }
   else if(m.t==='chat' && O.started) Chat.recv(m);
 }
@@ -336,8 +400,9 @@ function beginOnlineFight(O){
   O.started=true; clearTimeout(O.connectTimeout);
   const me=st.p1, info=O.info, host=O.role==='host', arena=AR.find(a=>a.id===info.arena)||AR[0];
   const oppName=info.opponent.name.toUpperCase();
-  const fight=new DD.Game.Fight({ p1:host?me:O.oppSpec, p2:host?O.oppSpec:me, arena, ai:null, record:host, remote:!host,
-    labels: host?['YOU',oppName]:[oppName,'YOU'], onEnd: idx=>{ if(host){ for(let i=0;i<3;i++) O.link.send({t:'end',w:idx},true); finishOnline(idx===0,'KO'); } } });
+  st.koShot=null; st.koRound=-1;
+  const fight=new DD.Game.Fight({ p1:host?me:O.oppSpec, p2:host?O.oppSpec:me, arena, ai:null, record:host, remote:!host, holder:host?[isHolder(),!!(info.opponent&&info.opponent.holder)]:[!!(info.opponent&&info.opponent.holder),isHolder()],
+    labels: host?['YOU',oppName]:[oppName,'YOU'], onEnd: idx=>{ if(host){ for(let i=0;i<3;i++) O.link.send({t:'end',w:idx},true); let n=0; const rs=setInterval(()=>{ try{ O.link.send({t:'end',w:idx},true); }catch(e){} if(++n>=10) clearInterval(rs); },300); finishOnline(idx===0,'KO'); } } });
   st.fight=fight; st.net = host ? new ON.NetHost(fight,O.link) : new ON.NetGuest(fight,O.link);
   st.mode='ranked'; O.myIdx=host?0:1;
   O.hb=setInterval(()=>ON.heartbeat(),5000);
@@ -346,7 +411,7 @@ function beginOnlineFight(O){
 async function finishOnline(won, reason){
   const O=st.online; if(!O||O.done) return; O.done=true; clearInterval(O.hb); clearInterval(O.rdyT);
   if(st.fight) st.fight.over=true;
-  setTimeout(()=>{ if(O.link) O.link.close(); },4000);
+  setTimeout(()=>{ if(O.link) O.link.close(); },8000);
   const fight=st.fight, mySpec=st.p1;
   Au.stop(); Au.sfx(won?'win':'lose'); Au.say(won?'You win':'Rekt');
   $('#resKicker').textContent= reason==='FORFEIT' ? (won?'OPPONENT FORFEITED':'YOU FORFEITED') : reason==='DISCONNECT' ? 'OPPONENT DISCONNECTED' : 'RANKED MATCH';
@@ -354,6 +419,8 @@ async function finishOnline(won, reason){
   $('#resImg').src=P(won?mySpec:O.oppSpec,'win');
   $('#resLine').textContent= won?`${O.info.opponent.name} got sent back to the charts.`:`${O.info.opponent.name} takes this one.`;
   if(fight) fillStats(fight,O.myIdx); else $('#resStats').innerHTML='';
+  if(fight){ const me=O.myIdx; st.share={won, fighter:fight.p[me].spec.name, opp:fight.p[1-me].spec.name, grade:grade(fight,me), combo:fight.stats[me].maxCombo, perfect:fight.p[1-me].wins===0, who:(ON.profile&&ON.profile.name)||'', vs:O.info.opponent.name}; }
+  $('#shareRow').hidden=!(won&&st.koShot&&fight);
   $('#resElo').hidden=false; $('#resElo').className='res-elo pending'; $('#resElo').textContent='Confirming result with the server…';
   setResultButtons('ranked'); $('#resultOv').hidden=false;
   st.net=null;
@@ -495,9 +562,13 @@ function loop(now){
   }
   const O=st.online;
   if(O&&O.started&&!O.done&&O.role==='guest'&&st.fight&&st.fight.over){ const w=st.fight.p.findIndex(f=>f.wins>=2); if(w>=0) finishOnline(w===1,'KO'); }
-  if(O&&O.started&&!O.done){ const quiet=performance.now()-O.link.lastHeard; if(quiet>7000 || (O.byeAt&&performance.now()-O.byeAt>1500)) finishOnline(true,'DISCONNECT'); }
+  if(O&&O.started&&!O.done){ const quiet=performance.now()-O.link.lastHeard; if(quiet>7000 || (O.byeAt&&performance.now()-O.byeAt>1500)){
+    // if the match was already decided on screen, the link dropping afterwards is not a disconnect win
+    const w=st.fight?st.fight.p.findIndex(f=>f.wins>=2):-1;
+    if(w>=0) finishOnline(w===O.myIdx,'KO'); else finishOnline(true,'DISCONNECT'); } }
   if(st.screen==='title') drawTitle();
   if(st.screen==='game' && st.fight) st.fight.draw(gc);
+  if(st.screen==='game' && st.fight && st.fight.phase==='ko' && st.fight.pt>=10 && st.koRound!==st.fight.round){ st.koRound=st.fight.round; try{ const c=document.createElement('canvas'); c.width=gc.canvas.width; c.height=gc.canvas.height; c.getContext('2d').drawImage(gc.canvas,0,0); st.koShot=c; }catch(e){} }
   DD.Sprites.warmTick(st.screen==='game'&&st.fight&&st.fight.phase==='fight'?4:12);
   requestAnimationFrame(loop);
 }

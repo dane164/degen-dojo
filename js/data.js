@@ -71,3 +71,17 @@ DD.TEXT_POPS = ['REKT','WAGMI','NGMI','BONK','GG','RATIO','COPE','DUMP','PUMP','
 
 // Arena ids with a hand-made image in img/arenas/<id>.png. Only listed ids are fetched (avoids 404s).
 DD.ARENA_ART = [];
+
+/* ---- $DOJO token config: fill in MINT once the coin is live (pump.fun contract address) ---- */
+DD.TOKEN={ symbol:'$DOJO', mint:'', holderMin:1,
+  rpc:['https://solana-rpc.publicnode.com','https://api.mainnet-beta.solana.com'] };
+/* ---- community vote: next fighter. Bump round + candidates to start a new vote ---- */
+DD.VOTE={ round:1, title:'WHO JOINS THE DOJO NEXT?', ends:'Vote closes when the next update drops',
+  candidates:[
+    {id:'bagholder', name:'Bag Holder', tag:'STILL HOLDING', desc:'Carries 40 bags. Every hit he takes makes him heavier and harder to knock down.'},
+    {id:'exitliq', name:'Exit Liquidity', tag:'THANKS FOR BUYING', desc:'Steals a slice of your health every time you block.'},
+    {id:'devsold', name:'The Dev (Sold)', tag:'IT WAS A SOCIAL EXPERIMENT', desc:'Teleports out mid-combo. Literally rugs the round.'},
+    {id:'shill', name:'The Influencer', tag:'NFA DYOR', desc:'Summons a crowd of followers that body-block for him.'},
+    {id:'farmer', name:'Airdrop Farmer', tag:'50 WALLETS DEEP', desc:'Splits into clones. Only one of them is real.'},
+    {id:'jeet', name:'The Jeet', tag:'SOLD AT 2X', desc:'Fastest walk speed in the game. Runs away the second it gets close.'}
+  ]};

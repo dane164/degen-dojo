@@ -10,8 +10,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
-<link rel="preload" as="image" href="img/title-bg.png?v=202610151914">
-<link rel="stylesheet" href="css/style.css?v=202610151914">
+<link rel="preload" as="image" href="img/title-bg.png?v=202610152021">
+<link rel="stylesheet" href="css/style.css?v=202610152021">
 </head>
 <body data-screen="title">
 <canvas id="bgScene" aria-hidden="true"></canvas>
@@ -47,7 +47,7 @@
       <button class="mode-btn" id="localBtn"><b>VS FRIEND</b><small>SAME KEYBOARD</small></button>
       <button class="mode-btn" id="quickBtn"><b>QUICK FIGHT</b><small>RANDOM</small></button>
     </div>
-    <div class="title-links"><button class="link-btn" id="lbBtn">🏆 LEADERBOARD</button><button class="link-btn" id="howBtn">? HOW TO PLAY</button></div>
+    <div class="title-links"><button class="link-btn" id="lbBtn">🏆 LEADERBOARD</button><button class="link-btn vote-link" id="voteBtn">🗳 VOTE NEXT FIGHTER</button><button class="link-btn" id="howBtn">? HOW TO PLAY</button></div>
   </div>
   <div class="title-floor">
     <canvas id="titleCanvas" aria-hidden="true"></canvas>
@@ -159,6 +159,7 @@
     <p id="resLine"></p>
     <p class="res-elo" id="resElo" hidden></p>
     <dl class="res-stats" id="resStats"></dl>
+    <div class="share-row" id="shareRow" hidden><button class="share-btn" data-act="shareKO"><b>𝕏</b><span>SHARE YOUR KO</span></button><button class="ghost-btn" data-act="saveKO">SAVE CARD</button></div>
     <button class="big-btn sm" data-act="restart"><span>REMATCH</span><span class="arrow">↗</span></button>
     <button class="big-btn sm" data-act="requeue"><span>FIND ANOTHER MATCH</span><span class="arrow">↗</span></button>
     <button class="ghost-btn" data-act="next">NEW CPU, SAME FIGHTER</button>
@@ -220,12 +221,26 @@
   </div>
 </div>
 
+<div class="overlay" id="voteOv" hidden>
+  <div class="card vote">
+    <p class="kicker">COMMUNITY VOTE · ROUND <span id="voteRound">1</span></p>
+    <h2 id="voteTitle">WHO JOINS THE DOJO NEXT?</h2>
+    <p class="small center" id="voteSub"></p>
+    <div class="vote-list" id="voteList"></div>
+    <p class="small center" id="voteFoot"></p>
+    <button class="ghost-btn" data-act="closeVote">CLOSE</button>
+  </div>
+</div>
+
 <div class="overlay" id="nameOv" hidden>
   <form class="card" id="nameForm" autocomplete="off">
     <h2 id="nameTitle">PICK A FIGHTER NAME</h2>
     <p class="center">This is how you'll show up on the leaderboard. No sign-up: your profile is saved in this browser.</p>
     <label class="field" for="nameInput">NAME</label>
     <input id="nameInput" class="text-in" maxlength="16" placeholder="e.g. DiamondDane" spellcheck="false">
+    <label class="field" for="walletInput">SOLANA WALLET <small>(OPTIONAL · UNLOCKS HOLDER PERKS)</small></label>
+    <input id="walletInput" class="text-in wallet-in" maxlength="44" placeholder="Paste your wallet address" spellcheck="false" autocapitalize="off">
+    <p class="small wallet-note" id="walletNote">Hold $DOJO in this wallet for a gold HOLDER badge on the leaderboard, a gold name and shield in fights. Read-only: we never ask you to connect or sign anything.</p>
     <p class="err" id="nameErr" role="alert"></p>
     <button class="big-btn sm" id="nameGo" type="submit"><span>ENTER THE DOJO</span><span class="arrow">↗</span></button>
     <button class="ghost-btn" id="nameCancel" type="button">CANCEL</button>
@@ -259,17 +274,17 @@
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="js/data.js?v=202610151914"></script>
-<script src="js/art.js?v=202610151914"></script>
-<script src="js/sprites.js?v=202610151914"></script>
-<script src="js/arenas.js?v=202610151914"></script>
-<script src="js/arenas2.js?v=202610151914"></script>
-<script src="js/scene.js?v=202610151914"></script>
-<script src="js/audio.js?v=202610151914"></script>
-<script src="js/game.js?v=202610151914"></script>
-<script src="js/specials.js?v=202610151914"></script>
+<script src="js/data.js?v=202610152021"></script>
+<script src="js/art.js?v=202610152021"></script>
+<script src="js/sprites.js?v=202610152021"></script>
+<script src="js/arenas.js?v=202610152021"></script>
+<script src="js/arenas2.js?v=202610152021"></script>
+<script src="js/scene.js?v=202610152021"></script>
+<script src="js/audio.js?v=202610152021"></script>
+<script src="js/game.js?v=202610152021"></script>
+<script src="js/specials.js?v=202610152021"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/online.js?v=202610151914"></script>
-<script src="js/main.js?v=202610151914"></script>
+<script src="js/online.js?v=202610152021"></script>
+<script src="js/main.js?v=202610152021"></script>
 </body>
 </html>
