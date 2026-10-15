@@ -643,13 +643,13 @@ function artNotify(id){ for(const k of [...cache.keys()]) if(!id||k.startsWith(i
 function artFor(spec){
   const def=(DD.SPRITE_ART||{})[spec.id]; if(!def) return null;
   let a=ART[spec.id];
-  if(!a){ a=ART[spec.id]={def,img:new Image(),ok:false}; a.img.onload=()=>{ a.ok=true; artNotify(spec.id); }; a.img.onerror=()=>{ a.bad=true; }; a.img.src=def.src; }
+  if(!a){ a=ART[spec.id]={def,img:new Image(),ok:false}; a.img.onload=()=>{ if(a.img.naturalWidth<def.cell[0]*8){ a.bad=true; console.warn('stale sheet for',spec.id); return; } a.ok=true; artNotify(spec.id); }; a.img.onerror=()=>{ a.bad=true; }; a.img.src=def.src; }
   return a.ok?a:null;
 }
 // small atlas of every fighter's idle frame, so menus show the real art before full sheets arrive
 let IDLE=null;
 function idleAtlas(){ const d=DD.SPRITE_IDLE; if(!d) return null;
-  if(!IDLE){ IDLE={img:new Image(),ok:false}; IDLE.img.onload=()=>{ IDLE.ok=true; artNotify(null); }; IDLE.img.src=d.src; }
+  if(!IDLE){ IDLE={img:new Image(),ok:false}; IDLE.img.onload=()=>{ if(d.cell&&IDLE.img.naturalWidth!==d.cell[0]*(d.n||1)){ console.warn('stale idle atlas'); return; } IDLE.ok=true; artNotify(null); }; IDLE.img.src=d.src; }
   return IDLE.ok?IDLE:null; }
 function cut(img,sx,sy,d,alt){
   const [cw,ch]=d.cell, scale=(d.unit?RES/d.unit:(56*RES)/(d.height||ch))*(d.zoom||1);

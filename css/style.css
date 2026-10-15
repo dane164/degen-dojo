@@ -402,3 +402,10 @@ button:focus-visible,.tile:focus-visible,.atile:focus-visible{outline:3px solid 
   .title-floor .stats-line i{margin:0 4px}
   .q-label{font-size:8px}
 }
+
+/* ===== title background (pixelated street, blurred) ===== */
+#titleBg{position:fixed;inset:-24px;z-index:-1;pointer-events:none;opacity:0;transition:opacity .4s ease;
+  background:url(../img/title-bg.png?v=202610151842) center/cover no-repeat;image-rendering:pixelated;filter:blur(3px) brightness(.82) saturate(1.12)}
+#titleBg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,6,16,.55),rgba(20,6,16,0) 28%,rgba(20,6,16,0) 60%,rgba(20,6,16,.45))}
+body[data-screen="title"] #titleBg{opacity:1}
+.bg-credit{position:absolute;right:12px;bottom:4px;margin:0;font-size:12px;letter-spacing:1px;color:rgba(255,247,236,.45)}
