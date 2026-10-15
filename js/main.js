@@ -29,28 +29,39 @@ $('#muteBtn').onclick=()=>{ Au.setMuted(!Au.isMuted()); syncMute(); };
 syncMute();
 
 // ---------- title ----------
-const tc=$('#titleCanvas').getContext('2d'); tc.imageSmoothingEnabled=false;
-const lineup=['bear','moon','diamond','main','whale','shiba','brain'].map(id=>F.find(f=>f.id===id));
-let tf=0, titleStage=null;
-function bakeTitleStage(){
-  const P=DD.Pix, cv=document.createElement('canvas'); cv.width=480; cv.height=270; const c=cv.getContext('2d',{willReadFrequently:true});
-  c.fillStyle=P.vgrad(c,226,270,['#c8823e','#8a4a1e','#4a2008']); c.beginPath(); c.moveTo(20,236); c.lineTo(460,236); c.lineTo(480,270); c.lineTo(0,270); c.fill();
-  for(let i=-10;i<=10;i++){ c.strokeStyle='rgba(60,24,6,.5)'; c.lineWidth=1; c.beginPath(); c.moveTo(240+i*22,236); c.lineTo(240+i*26,270); c.stroke(); }
-  P.R(c,20,234,440,3,'#ffd8a0'); P.R(c,0,262,480,8,'#2b1405');
-  P.texture(c,0,234,480,36,0.3,3,9); P.glow(c,240,236,200,'rgba(255,200,120,0.25)');
-  P.dither(c,480,270,10); return cv;
+// full-width wooden stage along the bottom of the title screen, with a big line-up standing on it
+const tcv=$('#titleCanvas'), tc=tcv.getContext('2d');
+const lineupAll=['bear','moon','diamond','main','whale','shiba','brain','sigma','doom'].map(id=>F.find(f=>f.id===id)).filter(Boolean);
+let tf=0, titleStage=null, tW=0, tH=0, tPX=3;
+function bakeTitleStage(W,H,px){ // floor drawn on a coarse pixel grid, then blown up crisp
+  const P=DD.Pix, w=Math.ceil(W/px), h=Math.ceil(H/px), cv=document.createElement('canvas'); cv.width=w; cv.height=h; const c=cv.getContext('2d',{willReadFrequently:true});
+  const top=Math.round(h*0.66), lip=Math.max(3,Math.round(h*0.05)), bot=h;
+  c.fillStyle=P.vgrad(c,top,bot,['#d08a44','#9a5424','#5a2a0c']); c.fillRect(0,top,w,bot-top);
+  const vx=w/2; // planks converge on the centre
+  for(let i=-40;i<=40;i++){ const x0=vx+i*Math.max(10,w/34), x1=vx+i*Math.max(13,w/26); c.strokeStyle='rgba(60,24,6,.45)'; c.lineWidth=1; c.beginPath(); c.moveTo(x0,top); c.lineTo(x1,bot-lip); c.stroke(); }
+  for(let r=0;r<5;r++){ const y=Math.round(top+(bot-lip-top)*Math.pow(r/5,1.4)); c.fillStyle='rgba(60,24,6,.22)'; c.fillRect(0,y,w,1); }
+  P.R(c,0,top-1,w,2,'#ffd8a0'); P.R(c,0,top+1,w,1,'rgba(255,240,210,.35)');
+  P.texture(c,0,top,w,bot-top,0.3,3,9);
+  P.R(c,0,bot-lip,w,lip,'#3a1a08'); P.R(c,0,bot-lip,w,1,'#7a3a14');
+  c.globalCompositeOperation='lighter'; const g=c.createRadialGradient(vx,top,4,vx,top,w*0.45); g.addColorStop(0,'rgba(255,190,110,.28)'); g.addColorStop(1,'rgba(255,190,110,0)'); c.fillStyle=g; c.fillRect(0,top-h*0.3,w,h); c.globalCompositeOperation='source-over';
+  P.dither(c,w,h,10); return {cv,top:top*px};
 }
+function sizeTitle(){ const r=tcv.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1), W=Math.max(320,Math.round(r.width*dpr)), H=Math.max(160,Math.round(r.height*dpr));
+  if(W!==tW||H!==tH||!titleStage){ tW=W; tH=H; tcv.width=W; tcv.height=H; tPX=Math.max(2,Math.round(3*dpr)); titleStage=bakeTitleStage(W,H,tPX); } }
 function drawTitle(){
-  tf++;
-  tc.setTransform(1,0,0,1,0,0); tc.clearRect(0,0,960,540);
-  tc.setTransform(2,0,0,2,0,0); tc.imageSmoothingEnabled=false;
-  if(!titleStage) titleStage=bakeTitleStage();
-  tc.drawImage(titleStage,0,0);
-  lineup.forEach((s,i)=>{
-    const x=60+i*60, y=238+(i===3?2:0), cv=DD.Sprites.get(s,'idle',((tf/22)|0)+i,false,false);
-    const sc=1/DD.Sprites.RES, dir=i<=3?1:-1; // 1 art pixel = 1 screen pixel: crisp, no uneven pixels
-    tc.fillStyle='rgba(43,20,5,.35)'; tc.beginPath(); tc.ellipse(x,y+1,14*sc*DD.Sprites.RES,3,0,0,7); tc.fill();
-    tc.save(); tc.translate(x,y); tc.scale(dir*sc,sc); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
+  tf++; sizeTitle();
+  tc.setTransform(1,0,0,1,0,0); tc.clearRect(0,0,tW,tH); tc.imageSmoothingEnabled=false;
+  tc.drawImage(titleStage.cv,0,0,titleStage.cv.width*tPX,titleStage.cv.height*tPX);
+  const n=tW<900?5:tW<1500?7:9, L=lineupAll.slice(0,n), mid=(n-1)/2;
+  const floorY=titleStage.top+Math.round((tH-titleStage.top)*0.42);
+  const want=Math.min(floorY*0.92, tW/n*1.55);           // target sprite height in canvas px
+  const gap=Math.min(tW/(n+0.6), want*0.72);
+  L.forEach((s,i)=>{
+    const cv=DD.Sprites.menu(s,((tf/14)|0)+i*3,false); if(!cv) return;
+    const A=DD.SPRITE_ART&&DD.SPRITE_ART[s.id], hh=(A&&A.h?A.h:112)*DD.Sprites.RES/2; // sprite height in its own backing px
+    const k=want/hh, x=Math.round(tW/2+(i-mid)*gap), y=floorY+Math.round(Math.abs(i-mid)*-2), dir=i<=mid?1:-1;
+    tc.fillStyle='rgba(30,12,4,.4)'; tc.beginPath(); tc.ellipse(x,y+2,want*0.2,want*0.035,0,0,7); tc.fill();
+    tc.save(); tc.translate(x,y); tc.scale(dir*k,k); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
   });
 }
 $$('.diff button').forEach(b=>{ b.classList.toggle('on',b.dataset.diff===st.diff); b.onclick=()=>{ st.diff=b.dataset.diff; try{localStorage.setItem('dd_diff',st.diff);}catch(e){} $$('.diff button').forEach(x=>x.classList.toggle('on',x===b)); Au.sfx('select'); }; });

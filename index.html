@@ -19,37 +19,38 @@
 <header class="topbar">
   <a class="brand" href="#" id="brandHome" aria-label="Degen Dojo home">
     <span class="logo-mark" aria-hidden="true"></span>
-    <span class="brand-name">DEGEN DOJO</span>
+    <span class="brand-name"><b>DEGEN</b> DOJO</span>
   </a>
-  <span class="ticker">$DOJO</span>
+  <span class="ticker"><i class="dot" aria-hidden="true"></i>$DOJO</span>
   <div class="top-actions">
     <span class="hint" id="soundHint">CLICK FOR 8-BIT SOUND</span>
     <button class="chip" id="profileChip" hidden aria-label="Your ranked profile"></button>
-    <button class="icon-btn" id="lbTop" aria-label="Leaderboard">🏆</button>
-    <button class="icon-btn" id="helpBtn" aria-label="How to play">?</button>
+    <button class="icon-btn" id="lbTop" aria-label="Leaderboard" title="Leaderboard">🏆</button>
+    <button class="icon-btn" id="helpBtn" aria-label="How to play" title="How to play">?</button>
     <button class="icon-btn" id="muteBtn" aria-label="Mute music" title="Mute music">♪</button>
   </div>
 </header>
 
 <!-- TITLE -->
 <main id="screen-title" class="screen active">
-  <div class="title-stage">
-    <canvas id="titleCanvas" width="960" height="540"></canvas>
-    <div class="title-overlay">
-      <p class="presents">THE DOJO IS OPEN</p>
-      <h1 class="logo"><span class="l1">DEGEN</span><span class="l2">DOJO</span></h1>
-    </div>
+  <div class="title-hero">
+    <p class="presents">THE DOJO IS OPEN</p>
+    <h1 class="logo"><span class="l1">DEGEN</span><span class="l2">DOJO</span></h1>
   </div>
   <div class="title-card">
-    <button class="big-btn" id="rankedBtn"><span>RANKED ONLINE</span><span class="arrow">↗</span></button>
+    <div class="q-head"><span class="q-label">CHOOSE YOUR FIGHT</span><span class="online-line" id="onlineLine"></span></div>
+    <button class="big-btn" id="rankedBtn"><span class="bb-main">RANKED ONLINE</span><span class="bb-sub">FIND A MATCH</span><span class="arrow">▶</span></button>
     <div class="mode-row">
-      <button class="ghost-btn" id="cpuBtn">VS CPU</button>
-      <button class="ghost-btn" id="localBtn">VS FRIEND · LOCAL</button>
+      <button class="mode-btn" id="cpuBtn"><b>VS CPU</b><small>ARCADE</small></button>
+      <button class="mode-btn" id="localBtn"><b>VS FRIEND</b><small>SAME KEYBOARD</small></button>
+      <button class="mode-btn" id="quickBtn"><b>QUICK FIGHT</b><small>RANDOM</small></button>
     </div>
-    <div class="title-links"><button class="link-btn" id="lbBtn">LEADERBOARD</button><i>·</i><button class="link-btn" id="quickBtn">QUICK FIGHT</button><i>·</i><button class="link-btn" id="howBtn">HOW TO PLAY</button></div>
-    <p class="online-line" id="onlineLine"></p>
+    <div class="title-links"><button class="link-btn" id="lbBtn">🏆 LEADERBOARD</button><button class="link-btn" id="howBtn">? HOW TO PLAY</button></div>
   </div>
-  <p class="stats-line">24 FIGHTERS <i>✳</i> 12 ARENAS <i>✳</i> RANKED ONLINE</p>
+  <div class="title-floor">
+    <canvas id="titleCanvas" aria-hidden="true"></canvas>
+    <p class="stats-line">24 FIGHTERS <i>✳</i> 12 ARENAS <i>✳</i> RANKED ONLINE</p>
+  </div>
 </main>
 
 <!-- SELECT -->

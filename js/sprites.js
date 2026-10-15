@@ -663,8 +663,12 @@ function artFrame(a,poseName,frame,alt){
   const n=an.n||1, fi=((frame%n)+n)%n, [cw,ch]=d.cell;
   return cut(a.img,(an.col||0)*cw+fi*cw,an.row*ch,d,alt);
 }
-function idleFrame(spec,alt){ const d=DD.SPRITE_IDLE, A=idleAtlas(); if(!A) return null; const i=d.order.indexOf(spec.id); if(i<0) return null;
-  const c=DD.SPRITE_ART_COMMON; return cut(A.img,0,i*c.cell[1],c,alt); }
+function idleFrame(spec,alt,frame){ const d=DD.SPRITE_IDLE, A=idleAtlas(); if(!A) return null; const i=d.order.indexOf(spec.id); if(i<0) return null;
+  const c=d.cell?d:DD.SPRITE_ART_COMMON, n=d.n||1, f=(((frame|0)%n)+n)%n; return cut(A.img,f*c.cell[0],i*c.cell[1],c,alt); }
+// menus (title line-up, select tiles, portraits) only ever read the small idle atlas, so the big per-fighter sheets load on demand
+function menu(spec,frame,alt){ const d=DD.SPRITE_IDLE; if(SKIPART||!d||d.order.indexOf(spec.id)<0) return get(spec,'idle',frame,alt,false);
+  const n=d.n||1, f=(((frame|0)%n)+n)%n, key='M|'+spec.id+'|'+f+'|'+(alt?1:0); let cv=cache.get(key); if(cv) return cv;
+  cv=idleFrame(spec,alt,f); if(!cv) return get(spec,'idle',frame,alt,false); return remember(key,cv); }
 
 // ---------- public ----------
 const lastHead={};
@@ -676,7 +680,7 @@ function get(spec,poseName,frame,alt,white){
   if(cv){ cache.delete(key); cache.set(key,cv); return cv; }
   if(white){ const src=get(spec,poseName,frame,alt,false); cv=flash(src); cv._ox=src._ox; cv._oy=src._oy; return remember(key,cv); }
   const art=SKIPART?null:artFor(spec); if(art){ const a=artFrame(art,poseName,frame,alt); if(a) return remember(key,a); }
-  else if(!SKIPART&&DD.SPRITE_ART&&DD.SPRITE_ART[spec.id]){ const a=idleFrame(spec,alt); if(a) return a; } // not cached: swapped for the real frame once the sheet loads
+  else if(!SKIPART&&DD.SPRITE_ART&&DD.SPRITE_ART[spec.id]){ const a=idleFrame(spec,alt,0); if(a) return a; } // not cached: swapped for the real frame once the sheet loads
   const base=document.createElement('canvas'); base.width=W*RES; base.height=H*RES;
   C=base.getContext('2d',{willReadFrequently:true}); C.scale(RES,RES);
   try{
@@ -691,7 +695,7 @@ function get(spec,poseName,frame,alt,white){
   return remember(key,cv);
 }
 function portrait(spec,scale,poseName,alt){
-  const make=()=>{ const cv=get(spec,poseName||'idle',0,alt,false);
+  const make=()=>{ const cv=(!poseName||poseName==='idle')?menu(spec,0,alt):get(spec,poseName,0,alt,false);
     const k=scale*2/RES, out=document.createElement('canvas'); out.width=Math.round(cv.width*k); out.height=Math.round(cv.height*k);
     const c=out.getContext('2d'); c.imageSmoothingEnabled=false; c.drawImage(cv,0,0,out.width,out.height); return out.toDataURL(); };
   try{ return make(); }catch(e){ // file:// pages can't export image-based canvases: fall back to the drawn sprite
@@ -713,5 +717,5 @@ function rigFor(spec,poseName,frame){ const P=pose(poseName,frame,spec); if(!P) 
   for(const k of ['hip','neck','head','fS','bS','fE','bE','fH','bH','fHip','bHip','fK','bK','fF','bF']) o[k]=R[k]||P[k];
   return o; }
 const ANIM_LIST=['idle','walk','jab','punch','upper','heavy','kick','round','lunge','cpunch','ckick','jpunch','jkick','dive','throw','special','crouch','jump','block','cblock','hit','fall','kd','getup','dash','charge','dizzy','win','ball'];
-DD.Sprites={ get, portrait, shade, W, H, RES, prewarm, warmTick, nFrames, bake, rigFor, ANIM_LIST, OX, OY };
+DD.Sprites={ get, menu, portrait, shade, W, H, RES, prewarm, warmTick, nFrames, bake, rigFor, ANIM_LIST, OX, OY };
 })();
