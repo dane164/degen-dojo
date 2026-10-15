@@ -848,7 +848,9 @@ class Fight {
     ctx.strokeStyle='#ffd23f'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(x,y-2,12,-Math.PI/2,-Math.PI/2+Math.PI*2*p); ctx.stroke();
     ctx.restore();
   }
-  shieldGeom(f){ const cr=f.shieldCrouch; return {x:f.x+f.face*20, y:f.y-(cr?40:66), rx:18, ry:cr?34:54}; }
+  shieldGeom(f){ const cr=f.shieldCrouch, A=DD.SPRITE_ART&&DD.SPRITE_ART[f.spec.id], fr=A&&A.front?A.front:28, h=A&&A.h?Math.min(A.h,130):116;
+    // sits just in front of the fighter's lead fist, sized to the sprite, so it never cuts through the body
+    return {x:f.x+f.face*(fr-3), y:f.y-(cr?h*0.3:h*0.5), rx:18, ry:cr?h*0.3:h*0.47}; }
   shatter(f){ const g=this.shieldGeom(f); this.rec('shatter',[this.p.indexOf(f)]); const rec=this._inUpdate; this._inUpdate=false; this.snd('shatter');
     for(let i=0;i<18;i++){ const a=rand(-1.3,1.3), sp=rand(1.5,4.5); this.fx.push({kind:'shard',x:g.x+rand(-4,8)*f.face,y:g.y+rand(-g.ry,g.ry)*0.8,vx:Math.cos(a)*sp*f.face,vy:Math.sin(a)*sp-1.5,g:0.18,rot:rand(0,6),vr:rand(-0.3,0.3),s:rand(3,7),life:34+(Math.random()*16|0),max:50}); }
     this.ring(g.x,g.y,'#bff0ff'); this.ring(g.x,g.y,'#5ad1ff'); this._inUpdate=rec; }
