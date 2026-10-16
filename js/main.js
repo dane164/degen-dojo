@@ -53,13 +53,13 @@ function drawTitle(){
   tc.setTransform(1,0,0,1,0,0); tc.clearRect(0,0,tW,tH); tc.imageSmoothingEnabled=false;
   tc.drawImage(titleStage.cv,0,0,titleStage.cv.width*tPX,titleStage.cv.height*tPX);
   const floorY=titleStage.top+Math.round((tH-titleStage.top)*0.42);
-  let want=Math.min(floorY*0.92, tW/5*1.3);              // target sprite height in canvas px
+  let want=Math.min(floorY*0.78, tW/5*1.3);              // target sprite height in canvas px
   // keep the line-up clear of the menu card: fighters fill the space either side of it
   const cr=document.querySelector('#screen-title .title-card').getBoundingClientRect(), vr=tcv.getBoundingClientRect(), sx=tW/Math.max(1,vr.width);
   const cardL=(cr.left-vr.left)*sx, cardR=(cr.right-vr.left)*sx, cardB=(cr.bottom-vr.top)*sx;
-  const blocked=cardB>floorY-want*0.9;
+  const blocked=cardB>floorY-want*0.9; const padX=want*0.12;
   const slots=[]; let gap=want*0.62;
-  if(blocked){ const pad=want*0.28, zL=[want*0.3,cardL-pad], zR=[cardR+pad,tW-want*0.3];
+  if(blocked){ const pad=want*0.28, zL=[want*0.3,cardL-pad-padX], zR=[cardR+pad+padX,tW-want*0.3];
     const fit=z=>Math.max(0,Math.floor((z[1]-z[0])/gap)+1);
     let nl=fit(zL), nr=fit(zR);
     if(nl+nr<4){ want*=0.8; gap=want*0.62; nl=fit(zL); nr=fit(zR); }
@@ -69,9 +69,9 @@ function drawTitle(){
   slots.sort((a,b)=>a-b);
   const L=lineupAll.slice(0,slots.length), midX=tW/2;
   L.forEach((s,i)=>{
-    const cv=DD.Sprites.menu(s,((tf/14)|0)+i*3,false); if(!cv) return;
+    const cv=DD.Sprites.menu(s,(tf/16)|0,false); // everyone breathes on the same beat if(!cv) return;
     const A=DD.SPRITE_ART&&DD.SPRITE_ART[s.id], hh=(A&&A.h?A.h:112)*DD.Sprites.RES/2;
-    const k=want/hh, x=Math.round(slots[i]), y=floorY, dir=x<midX?1:-1;
+    const k=want/(124*DD.Sprites.RES/2), x=Math.round(slots[i]), y=floorY, dir=x<midX?1:-1;
     tc.fillStyle='rgba(30,12,4,.4)'; tc.beginPath(); tc.ellipse(x,y+2,want*0.2,want*0.035,0,0,7); tc.fill();
     tc.save(); tc.translate(x,y); tc.scale(dir*k,k); tc.drawImage(cv,-cv._ox,-cv._oy); tc.restore();
   });
@@ -204,7 +204,7 @@ function fillStats(fight,i){ const s=fight.stats[i];
   $('#resStats').innerHTML=[['HITS',s.hits],['BEST COMBO',s.maxCombo],['DAMAGE',Math.round(s.dmg)],['BLOCKS',s.blocks],['PARRIES',s.parries],['ROUNDS',fight.p[0].wins+'-'+fight.p[1].wins]]
     .map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join(''); }
 // ---------- share-a-KO card ----------
-const SITE='https://dane164.github.io/degen-dojo/';
+const SITE='https://degendojo.fun/';
 function koCard(){ const S=st.share, src=st.koShot; if(!S||!src) return null;
   const W=1200,H=675, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.imageSmoothingEnabled=false;
   x.drawImage(src,0,0,src.width,src.height,0,0,W,H);
@@ -265,7 +265,7 @@ document.addEventListener('click',e=>{
   if(act==='closeHow') closeHow();
   if(act==='closeLb') $('#lbOv').hidden=true;
   if(act==='refreshLb') openLeaderboard();
-  if(act==='rename') openNameModal(true);
+  if(act==='rename'){ $('#lbOv').hidden=true; openNameModal(true); }
   if(act==='shareKO') shareKO();
   if(act==='saveKO') saveKO();
   if(act==='closeVote') $('#voteOv').hidden=true;

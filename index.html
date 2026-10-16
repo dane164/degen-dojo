@@ -10,13 +10,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
-<link rel="preload" as="image" href="img/title-bg.png?v=202610152021">
-<link rel="stylesheet" href="css/style.css?v=202610152021">
+<link rel="preload" as="image" href="img/title-bg.png?v=202610161713">
+<link rel="stylesheet" href="css/style.css?v=202610161713">
 </head>
 <body data-screen="title">
-<canvas id="bgScene" aria-hidden="true"></canvas>
-<canvas id="bgFx" aria-hidden="true"></canvas>
-<div id="titleBg" aria-hidden="true"></div>
+<canvas id="bgScene" aria-hidden="true" style="display:none"></canvas>
+<canvas id="bgFx" aria-hidden="true" style="display:none"></canvas>
+<div id="titleBg" aria-hidden="true" style="position:fixed;inset:-24px;z-index:-1;pointer-events:none;background:#5a3530 url(img/title-bg.png) center/cover no-repeat;image-rendering:pixelated;filter:blur(3px) brightness(.82) saturate(1.12)"></div>
 
 <header class="topbar">
   <a class="brand" href="#" id="brandHome" aria-label="Degen Dojo home">
@@ -274,17 +274,17 @@
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="js/data.js?v=202610152021"></script>
-<script src="js/art.js?v=202610152021"></script>
-<script src="js/sprites.js?v=202610152021"></script>
-<script src="js/arenas.js?v=202610152021"></script>
-<script src="js/arenas2.js?v=202610152021"></script>
-<script src="js/scene.js?v=202610152021"></script>
-<script src="js/audio.js?v=202610152021"></script>
-<script src="js/game.js?v=202610152021"></script>
-<script src="js/specials.js?v=202610152021"></script>
+<script src="js/data.js?v=202610161713"></script>
+<script src="js/art.js?v=202610161713"></script>
+<script src="js/sprites.js?v=202610161713"></script>
+<script src="js/arenas.js?v=202610161713"></script>
+<script src="js/arenas2.js?v=202610161713"></script>
+<script src="js/scene.js?v=202610161713"></script>
+<script src="js/audio.js?v=202610161713"></script>
+<script src="js/game.js?v=202610161713"></script>
+<script src="js/specials.js?v=202610161713"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/online.js?v=202610152021"></script>
-<script src="js/main.js?v=202610152021"></script>
+<script src="js/online.js?v=202610161713"></script>
+<script src="js/main.js?v=202610161713"></script>
 </body>
 </html>

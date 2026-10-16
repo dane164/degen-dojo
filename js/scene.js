@@ -111,7 +111,7 @@ function tick(t){
 let to=0;
 function init(){
   bg=document.getElementById('bgScene'); fx=document.getElementById('bgFx'); if(!bg||!fx) return;
-  if(getComputedStyle(bg).visibility==='hidden') return; // street backdrop replaces the drawn scene
+  bg.style.display='none'; fx.style.display='none'; return; // street backdrop replaces the drawn scene (never draw the old one)
   try{ bake(); }catch(e){ console.warn('scene',e); fctx=fx.getContext('2d'); } if(!still) raf=requestAnimationFrame(tick); else tick(0), cancelAnimationFrame(raf);
   addEventListener('resize',()=>{ clearTimeout(to); to=setTimeout(()=>{ cancelAnimationFrame(raf); try{ bake(); }catch(e){} if(!still) raf=requestAnimationFrame(tick); },150); });
 }

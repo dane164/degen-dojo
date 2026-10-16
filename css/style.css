@@ -405,7 +405,7 @@ button:focus-visible,.tile:focus-visible,.atile:focus-visible{outline:3px solid 
 
 /* ===== title background (pixelated street, blurred) ===== */
 #titleBg{position:fixed;inset:-24px;z-index:-1;pointer-events:none;opacity:0;transition:opacity .4s ease;
-  background:url(../img/title-bg.png?v=202610152021) center/cover no-repeat;image-rendering:pixelated;filter:blur(3px) brightness(.82) saturate(1.12)}
+  background:url(../img/title-bg.png?v=202610161713) center/cover no-repeat;image-rendering:pixelated;filter:blur(3px) brightness(.82) saturate(1.12)}
 #titleBg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,6,16,.55),rgba(20,6,16,0) 28%,rgba(20,6,16,0) 60%,rgba(20,6,16,.45))}
 #titleBg{opacity:1}
 .bg-credit{position:absolute;right:12px;bottom:4px;margin:0;font-size:12px;letter-spacing:1px;color:rgba(255,247,236,.45)}
@@ -440,3 +440,7 @@ body[data-screen="title"] #titleBg{transition:none}
 .vote-c .pct{position:absolute;right:10px;bottom:1px;font-family:var(--pixel);font-size:9px;color:var(--ink)}
 .vote-c .you{position:absolute;right:10px;top:10px;font-family:var(--pixel);font-size:8px;color:#fff;background:var(--or);padding:3px 6px;border-radius:6px}
 @media (max-width:640px){ .vote-list{grid-template-columns:1fr} }
+.title-card .title-links{flex-wrap:nowrap;gap:14px}
+.title-card .link-btn{font-size:17px;white-space:nowrap}
+@media (max-width:640px){ .title-card .title-links{flex-wrap:wrap;gap:6px 12px} .title-card .link-btn{font-size:15px} }
+#nameOv{z-index:95}
