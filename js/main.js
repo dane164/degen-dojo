@@ -53,19 +53,17 @@ function drawTitle(){
   tc.setTransform(1,0,0,1,0,0); tc.clearRect(0,0,tW,tH); tc.imageSmoothingEnabled=false;
   tc.drawImage(titleStage.cv,0,0,titleStage.cv.width*tPX,titleStage.cv.height*tPX);
   const floorY=titleStage.top+Math.round((tH-titleStage.top)*0.42);
-  let want=Math.min(floorY*0.78, tW/5*1.3);              // target sprite height in canvas px
+  let want=Math.min(floorY*0.86, tW/5*1.3);              // target sprite height in canvas px
   // keep the line-up clear of the menu card: fighters fill the space either side of it
   const cr=document.querySelector('#screen-title .title-card').getBoundingClientRect(), vr=tcv.getBoundingClientRect(), sx=tW/Math.max(1,vr.width);
   const cardL=(cr.left-vr.left)*sx, cardR=(cr.right-vr.left)*sx, cardB=(cr.bottom-vr.top)*sx;
-  const blocked=cardB>floorY-want*0.9; const padX=want*0.12;
-  const slots=[]; let gap=want*0.62;
-  if(blocked){ const pad=want*0.28, zL=[want*0.3,cardL-pad-padX], zR=[cardR+pad+padX,tW-want*0.3];
-    const fit=z=>Math.max(0,Math.floor((z[1]-z[0])/gap)+1);
-    let nl=fit(zL), nr=fit(zR);
-    if(nl+nr<4){ want*=0.8; gap=want*0.62; nl=fit(zL); nr=fit(zR); }
-    const k=Math.min(nl,nr,5);
-    for(let i=0;i<k;i++){ slots.push(zL[1]-i*gap); slots.push(zR[0]+i*gap); } }
-  if(!slots.length){ const n=tW<900?5:tW<1500?7:9; gap=Math.min(tW/(n+0.6),want*0.72); for(let i=0;i<n;i++) slots.push(tW/2+(i-(n-1)/2)*gap); }
+  // always 2 fighters each side of the menu card, never more, never overlapping
+  const gap=want*0.78, pad=want*0.42, slots=[];
+  let L0=cardL-pad, R0=cardR+pad;
+  if(L0-gap<want*0.3||R0+gap>tW-want*0.3){ want*=0.8; }               // narrow screens: shrink a bit
+  const g=want*0.78, p2=want*0.42; L0=cardL-p2; R0=cardR+p2;
+  if(L0<want*0.3){ const n=tW<700?3:4; for(let i=0;i<n;i++) slots.push(tW/2+(i-(n-1)/2)*g); }  // phones: card isn't over the floor, line them up
+  else for(let i=0;i<2;i++){ slots.push(L0-i*g); slots.push(R0+i*g); }
   slots.sort((a,b)=>a-b);
   const L=lineupAll.slice(0,slots.length), midX=tW/2;
   L.forEach((s,i)=>{
