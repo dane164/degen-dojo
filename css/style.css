@@ -405,7 +405,7 @@ button:focus-visible,.tile:focus-visible,.atile:focus-visible{outline:3px solid 
 
 /* ===== title background (pixelated street, blurred) ===== */
 #titleBg{position:fixed;inset:-24px;z-index:-1;pointer-events:none;opacity:0;transition:opacity .4s ease;
-  background:url(../img/title-bg.png?v=202610161753) center/cover no-repeat;image-rendering:pixelated;filter:blur(3px) brightness(.82) saturate(1.12)}
+  background:url(../img/title-bg.png?v=202610162142) center/cover no-repeat;image-rendering:pixelated;filter:blur(3px) brightness(.82) saturate(1.12)}
 #titleBg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,6,16,.55),rgba(20,6,16,0) 28%,rgba(20,6,16,0) 60%,rgba(20,6,16,.45))}
 #titleBg{opacity:1}
 .bg-credit{position:absolute;right:12px;bottom:4px;margin:0;font-size:12px;letter-spacing:1px;color:rgba(255,247,236,.45)}
@@ -444,3 +444,14 @@ body[data-screen="title"] #titleBg{transition:none}
 .title-card .link-btn{font-size:17px;white-space:nowrap}
 @media (max-width:640px){ .title-card .title-links{flex-wrap:wrap;gap:6px 12px} .title-card .link-btn{font-size:15px} }
 #nameOv{z-index:95}
+/* bug fixes: share button wrapping, crowded phone select header */
+.share-btn{white-space:nowrap;font-size:20px;padding:10px 16px}
+.share-btn span{white-space:nowrap}
+@media (max-width:640px){
+  .share-btn{font-size:17px;padding:9px 12px;gap:6px}
+  .side-top{flex-wrap:wrap;row-gap:4px}
+  .side.p2 .side-top{justify-content:flex-end}
+  .diff.in-panel{margin-left:0;flex-basis:100%;justify-content:flex-end}
+  .diff.in-panel button{font-size:13px;padding:1px 6px}
+}
+.share-row .ghost-btn{white-space:nowrap}

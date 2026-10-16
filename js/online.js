@@ -1,7 +1,7 @@
 /* DEGEN DOJO — online: identity, matchmaking RPCs, P2P link (WebRTC w/ Supabase relay fallback), host/guest netcode. */
 (function(){
-const SB_URL='https://joweztiusidvcmjmxjsr.supabase.co';
-const SB_KEY='sb_publishable_z8xZC3UIzOjb7Pr9TKpvUA_Qbpe-I6_'; // publishable (safe in client); all writes go through checked RPCs
+const SB_URL='https://aayybofjiverrpbpeexw.supabase.co';
+const SB_KEY='sb_publishable_HCPrX5BAu32Tv5WOWG8r0w_-ETy7dYy'; // publishable (safe in client); all writes go through checked RPCs
 const ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}];
 const KEYS=['left','right','up','down','p','k','block','sp','th'];
 let sb=null;
